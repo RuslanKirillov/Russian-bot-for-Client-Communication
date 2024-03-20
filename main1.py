@@ -138,13 +138,7 @@ def func(message):
         cursor.close()
         if admin_level and admin_level[0] >= 3:
             print('Okey')
-    elif(message.text == 'test'):
-        print('test okey')
-        print('1')
-        print('1')
-        print('1')
-        print('1')
-##########################################################################
+###################################################
 
 bot.infinity_polling()
 

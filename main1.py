@@ -47,11 +47,24 @@ CREATE TABLE IF NOT EXISTS users (
 """
 execute_query(connection, create_users_table)
 
+def check_admin_rights(chat_id, connection):
+    try:
+        cursor = connection.cursor(buffered=True)
+        cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
+        admin_level = cursor.fetchone()
+        cursor.close()
+        
+        # Возвращает True, если уровень админа 3 и выше, иначе False
+        return admin_level and admin_level[0] >= 3
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False  # В случае возникновения исключения возвращает False
+
+
 bot = telebot.TeleBot('6899209881:AAHiEydcBqbJK_xpgtGKeIpTBoDbXhrJMCA', parse_mode=None)
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     chat_id = message.chat.id
-    print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытается авторизоваться. ')
     cursor = connection.cursor(buffered=True)
     cursor.execute("SELECT * FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
@@ -61,20 +74,20 @@ def send_welcome(message):
         connection.commit()
     cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
+    print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    admin_panelbtm = types.KeyboardButton("🔑 Админ-панель")
     buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
     have_key_btn = types.KeyboardButton("🔑 У меня есть ключ")
     markup.add(have_key_btn, buy_key_btn)
+    if check_admin_rights(message.chat.id, connection):
+        markup.add(admin_panelbtm)
     bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
 ############################################################################################################################
 @bot.message_handler(commands=['settings'])
 def send_settings(message):
-    chat_id = message.chat.id #Проверка админ-прав
     print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытется авторизоваться в админ-панеле.')
-    cursor = connection.cursor(buffered=True)
-    cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
-    admin_level = cursor.fetchone()
-    cursor.close() #Проверка админ-прав
-    if admin_level and admin_level[0] >= 1:
+    if check_admin_rights(message.chat.id, connection):
         print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
@@ -88,7 +101,7 @@ def send_settings(message):
         markup.add(sale_price_button)
         markup.add(statistic_button, add_promo)
         markup.add(off_bot)
-        bot.send_message(chat_id, "Добрый день, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору", reply_markup=markup)
+        bot.send_message(message.chat.id, text = "Добрый день, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
 
 ############################################################################################################################
 @bot.message_handler(content_types=['text'])
@@ -126,12 +139,7 @@ def func(message):
         bot.send_message(message.chat.id, text="Введите ключ который вы получили в сообщении. Весь функционал бота будет активарован вам автоматически\nСпасибо за то что доверяете нам.".format(message.from_user), reply_markup=markup)
         #
     elif(message.text == '📝 Открыть TePost Editor'):
-        chat_id = message.chat.id #Проверка админ-прав
-        cursor = connection.cursor(buffered=True)
-        cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
-        admin_level = cursor.fetchone()
-        cursor.close()
-        if admin_level and admin_level[0] >= 3:
+        if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True) 
             edit_textbtm = types.InlineKeyboardButton('Изменить текст')
             edit_imgbtm = types.InlineKeyboardButton('Изменить изображение')

@@ -18,6 +18,8 @@ def execute_query(connection, query): #Выполнение запросов
         print('Запрос успешно выполнен')
     except Error as e:
         print(f"Error: '{e}'")
+##################################SETTINGS##################################################
+menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
 #####################################################################################
 try: #Подключение к бд
     connection = mysql.connector.connect(
@@ -49,7 +51,7 @@ bot = telebot.TeleBot('6899209881:AAHiEydcBqbJK_xpgtGKeIpTBoDbXhrJMCA', parse_mo
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     chat_id = message.chat.id
-    print('Пользователь', chat_id, 'пытается авторизоваться. (use cmd /start)')
+    print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытается авторизоваться. ')
     cursor = connection.cursor(buffered=True)
     cursor.execute("SELECT * FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
@@ -61,22 +63,21 @@ def send_welcome(message):
     user = cursor.fetchone()
     buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
     have_key_btn = types.KeyboardButton("🔑 У меня есть ключ")
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)    
     markup.add(have_key_btn, buy_key_btn)
     bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
 ############################################################################################################################
 @bot.message_handler(commands=['settings'])
 def send_settings(message):
     chat_id = message.chat.id #Проверка админ-прав
-    print('Пользователь', message.chat.id, 'пытется авторизоваться в админ-панеле')
+    print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытется авторизоваться в админ-панеле.')
     cursor = connection.cursor(buffered=True)
     cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
     admin_level = cursor.fetchone()
     cursor.close() #Проверка админ-прав
     if admin_level and admin_level[0] >= 1:
-        print('Пользователь', message.chat.id, 'авторизовался в админ-панеле')
+        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        free_pages_button = types.KeyboardButton('🆓 Бесплатная новость для всех пользователей')
+        free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
         new_pages_button = types.KeyboardButton('📰 Новая новость для платных пользователей')
         sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
         statistic_button = types.KeyboardButton('📊 Статистика бота')
@@ -95,49 +96,53 @@ def func(message):
     if(message.text == "🛒 Купить ключ"):
         buy_key_url_7 = types.KeyboardButton("Купить ключ на 7 дней")
         buy_key_url_30 = types.KeyboardButton("Купить ключ на 30 дней")
-        menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         markup.add(buy_key_url_7, buy_key_url_30)
         markup.add(menu_buttom)
         bot.send_message(message.chat.id, text="На данный момент действует скидка 50% на покупку бота по прогнозам\n1000 рублей - 7 дней\n2750 - 30 дней\n".format(message.from_user), reply_markup=markup)
     elif(message.text == 'Купить ключ на 7 дней' or message.text == '/buykey7day'):
-        print('Пользователь', message.chat.id, 'пытается приобрести ключ на 7 дней. (use cmd /buykey7day)')
+        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
         markup = types.InlineKeyboardMarkup()
         buy_key_url_7_day = types.InlineKeyboardButton("Онлайн оплата 7 дней", url='https://ru.freepik.com/photos/котики')
         markup.add(buy_key_url_7_day)
         bot.send_message(message.chat.id, "Для совершения оплаты перейдите по ссылке и продолжайте следовать инструкции\nОплата принимается:\nСПБ\nМИР\nVISA/MASTERCARD".format(message.from_user), reply_markup=markup)
     elif(message.text == 'Купить ключ на 30 дней' or message.text == '/buykey30day'):
-        print('Пользователь', message.chat.id, 'пытается приобрести ключ на 30 дней. (use cmd /buykey30day)')
+        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}]пытается приобрести ключ на 30 дней. ')
         markup = types.InlineKeyboardMarkup()
         buy_key_url_30_day = types.InlineKeyboardButton("Онлайн оплата 30 дней", url='https://ru.freepik.com/photos/котики')
         markup.add(buy_key_url_30_day)
         bot.send_message(message.chat.id, "Для совершения оплаты перейдите по ссылке и продолжайте следовать инструкции\nОплата принимается:\nСПБ\nМИР\nVISA/MASTERCARD".format(message.from_user), reply_markup=markup)
     elif(message.text == "🟥 Вернуться в меню"):
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True) 
         buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
-        have_key_btn = types.KeyboardButton("🔑 У меня есть ключ")
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)    
+        have_key_btn = types.KeyboardButton("🔑 У меня есть ключ") 
         markup.add(have_key_btn, buy_key_btn)
         bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
     elif(message.text == '🔑 У меня есть ключ' or message.text == '/havekey'):
-        print('Пользователь', message.chat.id, 'пытается ввести ключ (use cmd /havekey)')
+        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}]пытается ввести ключ (use cmd /havekey)')
         markup = types.InlineKeyboardMarkup()
         support_url = types.InlineKeyboardButton("🆘 Связаться с поддержкой", url='https://t.me/Phaelwy')
         markup.add(support_url)
         bot.send_message(message.chat.id, text="Введите ключ который вы получили в сообщении. Весь функционал бота будет активарован вам автоматически\nСпасибо за то что доверяете нам.".format(message.from_user), reply_markup=markup)
         #
-        user_text = message.text
-        if user_text == test_key:
-            print('Yes')
-        else:
-            print('no')
-    elif(message.text == '🆓 Бесплатная новость для всех пользователей'):
+    elif(message.text == '📝 Открыть TePost Editor'):
         chat_id = message.chat.id #Проверка админ-прав
         cursor = connection.cursor(buffered=True)
         cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
         admin_level = cursor.fetchone()
         cursor.close()
         if admin_level and admin_level[0] >= 3:
-            print('Okey')
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True) 
+            edit_textbtm = types.InlineKeyboardButton('Изменить текст')
+            edit_imgbtm = types.InlineKeyboardButton('Изменить изображение')
+            promo_postbtm = types.InlineKeyboardButton('Предосмотр поста')
+            send_postbtm = types.InlineKeyboardButton('Отправить пост')
+            markup.add(edit_textbtm, edit_imgbtm)
+            markup.add(promo_postbtm)
+            markup.add(send_postbtm)
+            markup.add(menu_buttom)
+            print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
+            bot.send_message(message.chat.id, text = 'Используйте кнопки для редактирования поста\nTePost Editor - специальная разработка для данного бота\nВсе действия логгируются системному администратору'.format(message.from_user), reply_markup=markup)
 ###################################################
 
 bot.infinity_polling()

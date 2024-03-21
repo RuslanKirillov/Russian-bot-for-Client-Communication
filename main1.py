@@ -2,6 +2,7 @@ import telebot
 from telebot import types # для указание типов
 import mysql.connector
 from mysql.connector import Error
+import os
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
@@ -11,8 +12,8 @@ try:
     # Обработка успешного ответа
 except ReadTimeout:
     # Код для обработки таймаута
-    print("Запрос превысил время ожидания.")
-############
+    print("Запрос превысил время ожидания. Проблемы с TelegramAPI сервером")
+####################################################################################
 def create_database(connection, query): #Создание базы данных
     cursor = connection.cursor()
     try:
@@ -45,7 +46,6 @@ def after_text_2(message):
         inf.write(msg)
     print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] изменил текст в TePost Editor:\n{msg}')
     msg = None
-    print(msg)
     bot.send_message(message.chat.id, text='Текст успешно сохранён, используйте для настройки кнопки управления TePost Editor')
 ##################################SETTINGS##################################################
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
@@ -149,7 +149,7 @@ def func(message):
         support_url = types.InlineKeyboardButton("🆘 Связаться с поддержкой", url='https://t.me/Phaelwy')
         markup.add(support_url)
         bot.send_message(message.chat.id, text="Введите ключ который вы получили в сообщении. Весь функционал бота будет активарован вам автоматически\nСпасибо за то что доверяете нам.".format(message.from_user), reply_markup=markup)
-    elif(message.text == '📝 Открыть TePost Editor'):
+    elif(message.text == '📝 Открыть TePost Editor' or message.text == '🟥 Вернуться в TePost Editor'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True) 
             edit_textbtm = types.InlineKeyboardButton('💬 Изменить текст')
@@ -166,6 +166,41 @@ def func(message):
         if check_admin_rights(message.chat.id, connection):
             msg = bot.send_message(message.chat.id, text='Введите текст который вы хотите опубликовать в посте\nВ посте запрещено:\n- Использовать мат, ругательство\n- Оскороблять кого-либо, выражать ненависть\nПосле того как вы отправите текст используйте кнопки TePost Editor')
             bot.register_next_step_handler(msg, after_text_2)
+    elif(message.text == '📷 Изменить изображение'):
+        if check_admin_rights(message.chat.id, connection):
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            addimg_btm = types.InlineKeyboardButton('📸 Добавить/изменить изображение')
+            delimg_btm = types.InlineKeyboardButton('❌ Удалить изображение')
+            back_tepost_btm = types.InlineKeyboardButton('🟥 Вернуться в TePost Editor')
+            markup.add(addimg_btm, delimg_btm)
+            markup.add(back_tepost_btm)
+            bot.send_message(message.chat.id, text ='Используйте кнопки для управления'.format(message.from_user), reply_markup=markup)
+    elif(message.text == '📸 Добавить/изменить изображение'):
+        if check_admin_rights(message.chat.id, connection):
+            bot.reply_to(message, "Пожалуйста, отправьте изображение.\n")
+                        # Переводим пользователя в режим "ожидает отправки изображения"
+                        # Здесь должна быть ваша логика изменения состояния пользователя
+            @bot.message_handler(content_types=['photo'])
+            def handle_photos(message):
+                if check_admin_rights(message.chat.id, connection):  # Проверяем права пользователя
+                    file_id = message.photo[-1].file_id  # Получаем ID фото с наивысшим качеством
+                    file_info = bot.get_file(file_id)  # Получаем объект файла
+                    downloaded_file = bot.download_file(file_info.file_path)  # Скачиваем файл
+                    with open('img_msg.jpg', 'wb') as new_file:  # Открываем файл для записи в бинарном режиме
+                        new_file.write(downloaded_file)  # Записываем скаченный файл                   
+                    bot.reply_to(message, "Ваше изображение сохранено.")
+                    print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] изменил фотографию для поста.')
+    elif(message.text == '❌ Удалить изображение'):
+        if check_admin_rights(message.chat.id, connection):
+            if os.path.isfile("img_msg.jpg"):
+                os.remove("img_msg.jpg")
+                bot.reply_to(message, 'Изображение успешно удаленно.')
+                print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] удалил фотографию в TePost Editor.')
+            else:
+                bot.reply_to(message, 'Изображение не найденно.')
+                print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)')
+
+
 ###################################################
 
 bot.infinity_polling()

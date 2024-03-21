@@ -18,6 +18,17 @@ def execute_query(connection, query): #Выполнение запросов
         print('Запрос успешно выполнен')
     except Error as e:
         print(f"Error: '{e}'")
+def check_admin_rights(chat_id, connection):
+    try:
+        cursor = connection.cursor(buffered=True)
+        cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
+        admin_level = cursor.fetchone()
+        cursor.close()
+        # Возвращает True, если уровень админа 3 и выше, иначе False
+        return admin_level and admin_level[0] >= 3
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False  # В случае возникновения исключения возвращает False
 ##################################SETTINGS##################################################
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
 #####################################################################################
@@ -47,20 +58,6 @@ CREATE TABLE IF NOT EXISTS users (
 """
 execute_query(connection, create_users_table)
 
-def check_admin_rights(chat_id, connection):
-    try:
-        cursor = connection.cursor(buffered=True)
-        cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
-        admin_level = cursor.fetchone()
-        cursor.close()
-        
-        # Возвращает True, если уровень админа 3 и выше, иначе False
-        return admin_level and admin_level[0] >= 3
-    except Exception as e:
-        print(f"An error occurred: {e}")
-        return False  # В случае возникновения исключения возвращает False
-
-
 bot = telebot.TeleBot('6899209881:AAHiEydcBqbJK_xpgtGKeIpTBoDbXhrJMCA', parse_mode=None)
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
@@ -76,33 +73,13 @@ def send_welcome(message):
     user = cursor.fetchone()
     print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    admin_panelbtm = types.KeyboardButton("🔑 Админ-панель")
+    admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
     buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
     have_key_btn = types.KeyboardButton("🔑 У меня есть ключ")
     markup.add(have_key_btn, buy_key_btn)
     if check_admin_rights(message.chat.id, connection):
         markup.add(admin_panelbtm)
     bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
-############################################################################################################################
-@bot.message_handler(commands=['settings'])
-def send_settings(message):
-    print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытется авторизоваться в админ-панеле.')
-    if check_admin_rights(message.chat.id, connection):
-        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
-        new_pages_button = types.KeyboardButton('📰 Новая новость для платных пользователей')
-        sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
-        statistic_button = types.KeyboardButton('📊 Статистика бота')
-        add_promo = types.KeyboardButton('®️ Добавить промокод')
-        off_bot = types.KeyboardButton('❌ Оключить бота')
-        markup.add(free_pages_button)
-        markup.add(new_pages_button)
-        markup.add(sale_price_button)
-        markup.add(statistic_button, add_promo)
-        markup.add(off_bot)
-        bot.send_message(message.chat.id, text = "Добрый день, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
-
 ############################################################################################################################
 @bot.message_handler(content_types=['text'])
 def func(message):
@@ -113,6 +90,23 @@ def func(message):
         markup.add(buy_key_url_7, buy_key_url_30)
         markup.add(menu_buttom)
         bot.send_message(message.chat.id, text="На данный момент действует скидка 50% на покупку бота по прогнозам\n1000 рублей - 7 дней\n2750 - 30 дней\n".format(message.from_user), reply_markup=markup)
+    elif(message.text == '🛠 Админ-панель' or message.text =='/settings'):
+        if check_admin_rights(message.chat.id, connection):
+            print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
+            new_pages_button = types.KeyboardButton('📰 Новая новость для платных пользователей')
+            sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
+            statistic_button = types.KeyboardButton('📊 Статистика бота')
+            add_promo = types.KeyboardButton('®️ Добавить промокод')
+            off_bot = types.KeyboardButton('❌ Оключить бота')
+            markup.add(free_pages_button)
+            markup.add(new_pages_button)
+            markup.add(sale_price_button)
+            markup.add(statistic_button, add_promo)
+            markup.add(off_bot)
+            bot.send_message(message.chat.id, text = "Добрый день, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
+
     elif(message.text == 'Купить ключ на 7 дней' or message.text == '/buykey7day'):
         print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
         markup = types.InlineKeyboardMarkup()
@@ -137,14 +131,13 @@ def func(message):
         support_url = types.InlineKeyboardButton("🆘 Связаться с поддержкой", url='https://t.me/Phaelwy')
         markup.add(support_url)
         bot.send_message(message.chat.id, text="Введите ключ который вы получили в сообщении. Весь функционал бота будет активарован вам автоматически\nСпасибо за то что доверяете нам.".format(message.from_user), reply_markup=markup)
-        #
     elif(message.text == '📝 Открыть TePost Editor'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True) 
-            edit_textbtm = types.InlineKeyboardButton('Изменить текст')
-            edit_imgbtm = types.InlineKeyboardButton('Изменить изображение')
-            promo_postbtm = types.InlineKeyboardButton('Предосмотр поста')
-            send_postbtm = types.InlineKeyboardButton('Отправить пост')
+            edit_textbtm = types.InlineKeyboardButton('💬 Изменить текст')
+            edit_imgbtm = types.InlineKeyboardButton('📷 Изменить изображение')
+            promo_postbtm = types.InlineKeyboardButton('🪧 Предосмотр поста')
+            send_postbtm = types.InlineKeyboardButton('📩 Отправить пост')
             markup.add(edit_textbtm, edit_imgbtm)
             markup.add(promo_postbtm)
             markup.add(send_postbtm)

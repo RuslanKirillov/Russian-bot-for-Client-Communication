@@ -197,8 +197,23 @@ def func(message):
                 bot.reply_to(message, 'Изображение успешно удаленно.')
                 print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] удалил фотографию в TePost Editor.')
             else:
-                bot.reply_to(message, 'Изображение не найденно.')
+                bot.reply_to(message, 'Изображение не найденно. Dt')
                 print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)')
+    elif(message.text == '🪧 Предосмотр поста'):
+        if check_admin_rights(message.chat.id, connection):
+            print_msg = ''
+            with open('msg_file.txt', 'r') as inf:
+                print_msg = inf.read()
+            try:
+                with open('img_msg.jpg', 'rb') as imginf:
+                    print_img = imginf.read()  # Считываем содержимое изображения
+                bot.send_message(message.chat.id, text='Вот пример как будет выглядеть пост:')
+                bot.send_photo(message.chat.id, photo=print_img, caption=print_msg)
+            except:
+                bot.send_message(message.chat.id, text='Вот пример как будет выглядеть пост:')
+                bot.send_message(message.chat.id, text = print_msg)
+                print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] открыл предпросмотр нового поста.')
+
 
 
 ###################################################

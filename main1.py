@@ -3,6 +3,16 @@ from telebot import types # для указание типов
 import mysql.connector
 from mysql.connector import Error
 #####################################################################################
+import requests
+from requests.exceptions import ReadTimeout
+
+try:
+    response = requests.get('https://api.telegram.org/', timeout=60)
+    # Обработка успешного ответа
+except ReadTimeout:
+    # Код для обработки таймаута
+    print("Запрос превысил время ожидания.")
+############
 def create_database(connection, query): #Создание базы данных
     cursor = connection.cursor()
     try:
@@ -29,6 +39,14 @@ def check_admin_rights(chat_id, connection):
     except Exception as e:
         print(f"An error occurred: {e}")
         return False  # В случае возникновения исключения возвращает False
+def after_text_2(message):
+    msg = message.text
+    with open('msg_file.txt', 'w') as inf:
+        inf.write(msg)
+    print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] изменил текст в TePost Editor:\n{msg}')
+    msg = None
+    print(msg)
+    bot.send_message(message.chat.id, text='Текст успешно сохранён, используйте для настройки кнопки управления TePost Editor')
 ##################################SETTINGS##################################################
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
 #####################################################################################
@@ -144,6 +162,10 @@ def func(message):
             markup.add(menu_buttom)
             print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
             bot.send_message(message.chat.id, text = 'Используйте кнопки для редактирования поста\nTePost Editor - специальная разработка для данного бота\nВсе действия логгируются системному администратору'.format(message.from_user), reply_markup=markup)
+    elif(message.text == '💬 Изменить текст'):
+        if check_admin_rights(message.chat.id, connection):
+            msg = bot.send_message(message.chat.id, text='Введите текст который вы хотите опубликовать в посте\nВ посте запрещено:\n- Использовать мат, ругательство\n- Оскороблять кого-либо, выражать ненависть\nПосле того как вы отправите текст используйте кнопки TePost Editor')
+            bot.register_next_step_handler(msg, after_text_2)
 ###################################################
 
 bot.infinity_polling()

@@ -40,6 +40,17 @@ def check_admin_rights(chat_id, connection):
     except Exception as e:
         print(f"An error occurred: {e}")
         return False  # В случае возникновения исключения возвращает False
+def check_admin_system(chat_id, connection):
+    try:
+        cursor = connection.cursor(buffered=True)
+        cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
+        admin_level = cursor.fetchone()
+        cursor.close()
+        # Возвращает True, если уровень админа 6 и выше, иначе False
+        return admin_level and admin_level[0] >= 6
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False  # В случае возникновения исключения возвращает False
 def after_text_2(message):
     msg = message.text
     with open('msg_file.txt', 'w') as inf:
@@ -113,13 +124,11 @@ def func(message):
             print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
-            new_pages_button = types.KeyboardButton('📰 Новая новость для платных пользователей')
             sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
             statistic_button = types.KeyboardButton('📊 Статистика бота')
             add_promo = types.KeyboardButton('®️ Добавить промокод')
             off_bot = types.KeyboardButton('❌ Оключить бота')
             markup.add(free_pages_button)
-            markup.add(new_pages_button)
             markup.add(sale_price_button)
             markup.add(statistic_button, add_promo)
             markup.add(off_bot)
@@ -245,8 +254,15 @@ def func(message):
                 for i in user_ids:
                     bot.send_message(i, text = print_msg)
             print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
-
-
+    elif(message.text == '❌ Оключить бота'):
+        if check_admin_system(message.chat.id, connection):
+            bot.send_message(message.chat.id, text='use cmd:/bot_off_21')
+        else:
+            bot.send_message(message.chat.id, text='Отключать бота имеет право только системный администратор\nОбратитесь к администратору в Telegram')
+    elif(message.text == '/bot_off_21'):
+        if check_admin_system(message.chat.id, connection):
+            print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
+            bot.stop_polling()
 ###################################################
 
 bot.infinity_polling()

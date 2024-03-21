@@ -3,6 +3,8 @@ from telebot import types # для указание типов
 import mysql.connector
 from mysql.connector import Error
 import os
+import logging
+from datetime import datetime
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
@@ -55,22 +57,34 @@ def after_text_2(message):
     msg = message.text
     with open('msg_file.txt', 'w') as inf:
         inf.write(msg)
-    print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] изменил текст в TePost Editor:\n{msg}')
+    logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил текст в TePost Editor:\n{msg}')
+    print(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил текст в TePost Editor:\n{msg}')
     msg = None
     bot.send_message(message.chat.id, text='Текст успешно сохранён, используйте для настройки кнопки управления TePost Editor')
 ##################################SETTINGS##################################################
+current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+infolog_log = f"infolog_{current_time}.log"
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
+logging.basicConfig(level=logging.INFO, filename=infolog_log,filemode="w",
+                    format="%(asctime)s %(levelname)s %(message)s")
+#logging.debug("A DEBUG Message")
+#logging.info("An INFO")
+#logging.warning("A WARNING")
+#logging.error("An ERROR")
+#ogging.critical("A message of CRITICAL severity")
 #####################################################################################
 try: #Подключение к бд
     connection = mysql.connector.connect(
         host='localhost',
         user="root",
-        passwd="",
+        passwd="123456adS",
         database="stavki_ded"
     )
     cursor = connection.cursor()
-    print('Подключение к БД успешно')
+    logging.info('Подключение к DataBase успешно')
+    print('Подключение к DataBase успешно')
 except Error as e:
+    logging.info(f"Ошибка '{e}' произошла")
     print(f"Ошибка '{e}' произошла")
 
 create_database_query = "CREATE DATABASE stavki_ded"
@@ -100,7 +114,8 @@ def send_welcome(message):
         connection.commit()
     cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
-    print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
+    logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
+    print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
     have_key_btn = types.KeyboardButton("🔑 У меня есть ключ")
@@ -121,7 +136,8 @@ def func(message):
         bot.send_message(message.chat.id, text="На данный момент действует скидка 50% на покупку бота по прогнозам\n1000 рублей - 7 дней\n2750 - 30 дней\n".format(message.from_user), reply_markup=markup)
     elif(message.text == '🛠 Админ-панель' or message.text =='/settings'):
         if check_admin_rights(message.chat.id, connection):
-            print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
             sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
@@ -135,13 +151,15 @@ def func(message):
             bot.send_message(message.chat.id, text = "Добрый день, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
 
     elif(message.text == 'Купить ключ на 7 дней' or message.text == '/buykey7day'):
-        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
+        print(f'{message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
         markup = types.InlineKeyboardMarkup()
         buy_key_url_7_day = types.InlineKeyboardButton("Онлайн оплата 7 дней", url='https://ru.freepik.com/photos/котики')
         markup.add(buy_key_url_7_day)
         bot.send_message(message.chat.id, "Для совершения оплаты перейдите по ссылке и продолжайте следовать инструкции\nОплата принимается:\nСПБ\nМИР\nVISA/MASTERCARD".format(message.from_user), reply_markup=markup)
     elif(message.text == 'Купить ключ на 30 дней' or message.text == '/buykey30day'):
-        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}]пытается приобрести ключ на 30 дней. ')
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}]пытается приобрести ключ на 30 дней. ')
+        print(f'{message.from_user.first_name} [ID:{message.chat.id}]пытается приобрести ключ на 30 дней. ')
         markup = types.InlineKeyboardMarkup()
         buy_key_url_30_day = types.InlineKeyboardButton("Онлайн оплата 30 дней", url='https://ru.freepik.com/photos/котики')
         markup.add(buy_key_url_30_day)
@@ -156,7 +174,8 @@ def func(message):
             markup.add(admin_panelbtm)
         bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
     elif(message.text == '🔑 У меня есть ключ' or message.text == '/havekey'):
-        print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}]пытается ввести ключ (use cmd /havekey)')
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}]пытается ввести ключ (use cmd /havekey)')
+        print(f'{message.from_user.first_name} [ID:{message.chat.id}]пытается ввести ключ (use cmd /havekey)')
         markup = types.InlineKeyboardMarkup()
         support_url = types.InlineKeyboardButton("🆘 Связаться с поддержкой", url='https://t.me/Phaelwy')
         markup.add(support_url)
@@ -172,7 +191,8 @@ def func(message):
             markup.add(promo_postbtm)
             markup.add(send_postbtm)
             markup.add(menu_buttom)
-            print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
             bot.send_message(message.chat.id, text = 'Используйте кнопки для редактирования поста\nTePost Editor - специальная разработка для данного бота\nВсе действия логгируются системному администратору'.format(message.from_user), reply_markup=markup)
     elif(message.text == '💬 Изменить текст'):
         if check_admin_rights(message.chat.id, connection):
@@ -201,16 +221,18 @@ def func(message):
                     with open('img_msg.jpg', 'wb') as new_file:  # Открываем файл для записи в бинарном режиме
                         new_file.write(downloaded_file)  # Записываем скаченный файл                   
                     bot.reply_to(message, "Ваше изображение сохранено.")
-                    print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] изменил фотографию для поста.')
+                    logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил фотографию для поста.')
+                    print(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил фотографию для поста.')
     elif(message.text == '❌ Удалить изображение'):
         if check_admin_rights(message.chat.id, connection):
             if os.path.isfile("img_msg.jpg"):
                 os.remove("img_msg.jpg")
                 bot.reply_to(message, 'Изображение успешно удаленно.')
-                print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] удалил фотографию в TePost Editor.')
+                logging.info(f' {message.from_user.first_name} [ID:{message.chat.id}] удалил фотографию в TePost Editor.')
+                print(f'{message.from_user.first_name} [ID:{message.chat.id}] удалил фотографию в TePost Editor.')
             else:
                 bot.reply_to(message, 'Изображение не найденно. Вернитесь в TePost Editor')
-                print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)')
+                print(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)')
     elif(message.text == '🪧 Предосмотр поста'):
         if check_admin_rights(message.chat.id, connection):
             print_msg = ''
@@ -224,7 +246,8 @@ def func(message):
             except:
                 bot.send_message(message.chat.id, text='Вот пример как будет выглядеть пост:')
                 bot.send_message(message.chat.id, text = print_msg)
-                print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] открыл предпросмотр нового поста.')
+                logging.info(f' {message.from_user.first_name} [ID:{message.chat.id}] открыл предпросмотр нового поста.')
+                print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл предпросмотр нового поста.')
     elif(message.text == '📩 Отправить пост'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -245,17 +268,16 @@ def func(message):
             print_msg = ''
             with open('msg_file.txt', 'r') as inf:
                 print_msg = inf.read()
-            # Проверяем существование файла с изображением перед его открытием
-            if os.path.exists('img_msg.jpg'):
+            try:
                 with open('img_msg.jpg', 'rb') as imginf:
                     print_img = imginf.read()  # Считываем содержимое изображения
                 for i in user_ids:
                     bot.send_photo(i, photo=print_img, caption=print_msg)
-                print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
-            else:
+            except:
                 for i in user_ids:
-                    bot.send_message(i, text=print_msg)
-                print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
+                    bot.send_message(i, text = print_msg)
+            logging.info(f' {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
+            print(f' {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
     elif(message.text == '❌ Оключить бота'):
         if check_admin_system(message.chat.id, connection):
             bot.send_message(message.chat.id, text='use cmd:/bot_off_21')
@@ -263,8 +285,11 @@ def func(message):
             bot.send_message(message.chat.id, text='Отключать бота имеет право только системный администратор\nОбратитесь к администратору в Telegram')
     elif(message.text == '/bot_off_21'):
         if check_admin_system(message.chat.id, connection):
+            bot.send_message(message.chat.id, text='Отключение бота')
             print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
             bot.stop_polling()
+    else:
+        print('2333')
 ###################################################
 
 bot.infinity_polling()

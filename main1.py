@@ -65,7 +65,7 @@ try: #Подключение к бд
     connection = mysql.connector.connect(
         host='localhost',
         user="root",
-        passwd="123456adS",
+        passwd="",
         database="stavki_ded"
     )
     cursor = connection.cursor()
@@ -245,15 +245,17 @@ def func(message):
             print_msg = ''
             with open('msg_file.txt', 'r') as inf:
                 print_msg = inf.read()
-            try:
+            # Проверяем существование файла с изображением перед его открытием
+            if os.path.exists('img_msg.jpg'):
                 with open('img_msg.jpg', 'rb') as imginf:
                     print_img = imginf.read()  # Считываем содержимое изображения
                 for i in user_ids:
                     bot.send_photo(i, photo=print_img, caption=print_msg)
-            except:
+                print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
+            else:
                 for i in user_ids:
-                    bot.send_message(i, text = print_msg)
-            print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
+                    bot.send_message(i, text=print_msg)
+                print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
     elif(message.text == '❌ Оключить бота'):
         if check_admin_system(message.chat.id, connection):
             bot.send_message(message.chat.id, text='use cmd:/bot_off_21')

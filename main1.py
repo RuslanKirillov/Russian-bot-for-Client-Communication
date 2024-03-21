@@ -91,11 +91,11 @@ def send_welcome(message):
     user = cursor.fetchone()
     print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
     buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
     have_key_btn = types.KeyboardButton("🔑 У меня есть ключ")
     markup.add(have_key_btn, buy_key_btn)
     if check_admin_rights(message.chat.id, connection):
+        admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
         markup.add(admin_panelbtm)
     bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
 ############################################################################################################################
@@ -142,6 +142,9 @@ def func(message):
         buy_key_btn = types.KeyboardButton("🛒 Купить ключ")
         have_key_btn = types.KeyboardButton("🔑 У меня есть ключ") 
         markup.add(have_key_btn, buy_key_btn)
+        if check_admin_rights(message.chat.id, connection):
+            admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
+            markup.add(admin_panelbtm)
         bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
     elif(message.text == '🔑 У меня есть ключ' or message.text == '/havekey'):
         print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}]пытается ввести ключ (use cmd /havekey)')
@@ -197,7 +200,7 @@ def func(message):
                 bot.reply_to(message, 'Изображение успешно удаленно.')
                 print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] удалил фотографию в TePost Editor.')
             else:
-                bot.reply_to(message, 'Изображение не найденно. Dt')
+                bot.reply_to(message, 'Изображение не найденно. Вернитесь в TePost Editor')
                 print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)')
     elif(message.text == '🪧 Предосмотр поста'):
         if check_admin_rights(message.chat.id, connection):
@@ -213,7 +216,35 @@ def func(message):
                 bot.send_message(message.chat.id, text='Вот пример как будет выглядеть пост:')
                 bot.send_message(message.chat.id, text = print_msg)
                 print(f'Пользователь {message.from_user.first_name} [ID: {message.chat.id}] открыл предпросмотр нового поста.')
-
+    elif(message.text == '📩 Отправить пост'):
+        if check_admin_rights(message.chat.id, connection):
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            sendfree_btm = types.InlineKeyboardButton('🆓 Отправить пост всем')
+            sendsupport_btm = types.InlineKeyboardButton('💰 Отправить платный пост')
+            back_tepost_btm = types.InlineKeyboardButton('🟥 Вернуться в TePost Editor')
+            markup.add(sendfree_btm, sendsupport_btm)
+            markup.add(back_tepost_btm)
+            bot.send_message(message.chat.id, text='Перед отправкой воспользуйтесь предосмотром поста\nИспользуйте кнопки для отправки\nПост всем - отправить пост всем кто запустил бота\nПост платный - только оплаченные пользователи'.format(message.from_user), reply_markup=markup)
+    elif(message.text == '🆓 Отправить пост всем'):
+        if check_admin_rights(message.chat.id, connection):
+            cursor = connection.cursor()
+            query = "SELECT chat_id FROM users"
+            cursor.execute(query)
+            user_ids = [row[0] for row in cursor.fetchall()]
+            cursor.close()
+            #
+            print_msg = ''
+            with open('msg_file.txt', 'r') as inf:
+                print_msg = inf.read()
+            try:
+                with open('img_msg.jpg', 'rb') as imginf:
+                    print_img = imginf.read()  # Считываем содержимое изображения
+                for i in user_ids:
+                    bot.send_photo(i, photo=print_img, caption=print_msg)
+            except:
+                for i in user_ids:
+                    bot.send_message(i, text = print_msg)
+            print(f'Пользователь {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
 
 
 ###################################################

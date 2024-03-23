@@ -5,6 +5,7 @@ from mysql.connector import Error
 import os
 import logging
 from datetime import datetime
+from setting_bot import api_TOKEN1
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
@@ -101,7 +102,7 @@ CREATE TABLE IF NOT EXISTS users (
 """
 execute_query(connection, create_users_table)
 
-bot = telebot.TeleBot('6899209881:AAHiEydcBqbJK_xpgtGKeIpTBoDbXhrJMCA', parse_mode=None)
+bot = telebot.TeleBot(api_TOKEN1, parse_mode=None)
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     chat_id = message.chat.id
@@ -265,19 +266,31 @@ def func(message):
             user_ids = [row[0] for row in cursor.fetchall()]
             cursor.close()
             #
-            print_msg = ''
-            with open('msg_file.txt', 'r') as inf:
-                print_msg = inf.read()
-            try:
-                with open('img_msg.jpg', 'rb') as imginf:
-                    print_img = imginf.read()  # Считываем содержимое изображения
-                for i in user_ids:
-                    bot.send_photo(i, photo=print_img, caption=print_msg)
-            except:
-                for i in user_ids:
-                    bot.send_message(i, text = print_msg)
-            logging.info(f' {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
-            print(f' {message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям.')
+            yes_msg = 0 
+            no_msg = 0 
+            print_msg = '' 
+            with open('msg_file.txt', 'r') as inf: 
+                print_msg = inf.read() 
+            try: 
+                with open('img_msg.jpg', 'rb') as imginf: 
+                    print_img = imginf.read()  # Считываем содержимое изображения 
+                for user_id in user_ids: 
+                    try:
+                        bot.send_photo(user_id, photo=print_img, caption=print_msg) 
+                        yes_msg += 1 
+                    except:
+                        no_msg += 1 
+                        bot.send_message(user_id, text=print_msg) 
+            except Exception as e: 
+                for user_id in user_ids: 
+                    try:
+                        bot.send_message(user_id, text=print_msg) 
+                        yes_msg += 1 
+                    except:
+                        no_msg += 1 
+            bot.send_message(message.chat.id, text=f'Ваш пост был отправлен пользователям ботаnСтастистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно') 
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно {no_msg} - Неуспешно') 
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно {no_msg} - Неуспешно')
     elif(message.text == '❌ Оключить бота'):
         if check_admin_system(message.chat.id, connection):
             bot.send_message(message.chat.id, text='use cmd:/bot_off_21')
@@ -288,8 +301,7 @@ def func(message):
             bot.send_message(message.chat.id, text='Отключение бота')
             print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
             bot.stop_polling()
-    else:
-        print('2333')
+
 ###################################################
 
 bot.infinity_polling()

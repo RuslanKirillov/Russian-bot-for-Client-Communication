@@ -62,6 +62,28 @@ def after_text_2(message):
     print(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил текст в TePost Editor:\n{msg}')
     msg = None
     bot.send_message(message.chat.id, text='Текст успешно сохранён, используйте для настройки кнопки управления TePost Editor')
+def find_user_in_db(connection, user_name):
+    """Ищет информацию о пользователе в базе данных"""
+    cursor = connection.cursor()
+    query = "SELECT * FROM users WHERE name = %s"
+    cursor.execute(query, (user_name,))
+    records = cursor.fetchall()
+    cursor.close()
+    return records
+def process_user_search(message):
+    if connection is not None:
+        user_name = message.text
+        user_info = find_user_in_db(connection, user_name)
+        if user_info:
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] узнал информацию о пользователе: {user_name}, выведенная информация: {user_info}')
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] узнал информацию о пользователе: {user_name}, выведенная информация: {user_info}')
+            info_to_send = f"Информация о пользователе {user_name}: \nID:{user_info}"
+            bot.send_message(message.chat.id, info_to_send)
+        else:
+            bot.send_message(message.chat.id, 'Пользователь не найден.')
+    else:
+        bot.send_message(message.chat.id, 'Не удалось подключиться к базе данных.')
+
 ##################################SETTINGS##################################################
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 infolog_log = f"infolog_{current_time}.log"
@@ -144,13 +166,29 @@ def func(message):
             sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
             statistic_button = types.KeyboardButton('📊 Статистика бота')
             add_promo = types.KeyboardButton('®️ Добавить промокод')
+            set_user = types.KeyboardButton('👨‍💻 Настройка пользователей')
             off_bot = types.KeyboardButton('❌ Оключить бота')
             markup.add(free_pages_button)
             markup.add(sale_price_button)
             markup.add(statistic_button, add_promo)
+            markup.add(set_user)
             markup.add(off_bot)
-            bot.send_message(message.chat.id, text = "Добрый день, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
-
+            bot.send_message(message.chat.id, text = "Добро пожаловать, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
+    elif(message.text == '👨‍💻 Настройка пользователей' or message.text == '👨‍💻 Назад в UserEditor'):
+        if check_admin_rights(message.chat.id, connection):
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
+            bot.send_message(message.chat.id, text='Уважаемый администратор, вам запрещенно изменять права для пользователей. Для получения этой функции обратитесь к системному администратору.')
+        if check_admin_system(message.chat.id, connection):
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в права пользователей. (Удачно)')
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            check_btm = types.InlineKeyboardButton('🔍 Информация о пользователе')
+            setadm_btm = types.InlineKeyboardButton('📝 Изменить права для пользователя')
+            ban_btm = types.InlineKeyboardButton('⛔️ Заблокировать пользователя')
+            markup.add(check_btm)
+            markup.add(setadm_btm)
+            markup.add(ban_btm)
+            markup.add(menu_buttom)
+            bot.send_message(message.chat.id, text='''Используйте кнопки управления в меню\nВсе действия логгируются системному администратору'''.format(message.from_user), reply_markup=markup)
     elif(message.text == 'Купить ключ на 7 дней' or message.text == '/buykey7day'):
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
         print(f'{message.from_user.first_name} [ID:{message.chat.id}] пытается приобрести ключ на 7 дней. ')
@@ -199,6 +237,14 @@ def func(message):
         if check_admin_rights(message.chat.id, connection):
             msg = bot.send_message(message.chat.id, text='Введите текст который вы хотите опубликовать в посте\nВ посте запрещено:\n- Использовать мат, ругательство\n- Оскороблять кого-либо, выражать ненависть\nПосле того как вы отправите текст используйте кнопки TePost Editor')
             bot.register_next_step_handler(msg, after_text_2)
+    elif(message.text == '🔍 Информация о пользователе'):
+        if check_admin_system(message.chat.id, connection):
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            back_user_btm = types.InlineKeyboardButton('👨‍💻 Назад в UserEditor')
+            markup.add(back_user_btm)
+            markup.add(menu_buttom)
+            msg = bot.send_message(message.chat.id, 'Введите имя пользователя:')
+            bot.register_next_step_handler(msg, process_user_search)
     elif(message.text == '📷 Изменить изображение'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -265,32 +311,42 @@ def func(message):
             cursor.execute(query)
             user_ids = [row[0] for row in cursor.fetchall()]
             cursor.close()
-            #
-            yes_msg = 0 
-            no_msg = 0 
-            print_msg = '' 
-            with open('msg_file.txt', 'r') as inf: 
-                print_msg = inf.read() 
-            try: 
-                with open('img_msg.jpg', 'rb') as imginf: 
-                    print_img = imginf.read()  # Считываем содержимое изображения 
-                for user_id in user_ids: 
-                    try:
-                        bot.send_photo(user_id, photo=print_img, caption=print_msg) 
-                        yes_msg += 1 
-                    except:
-                        no_msg += 1 
-                        bot.send_message(user_id, text=print_msg) 
-            except Exception as e: 
-                for user_id in user_ids: 
-                    try:
-                        bot.send_message(user_id, text=print_msg) 
-                        yes_msg += 1 
-                    except:
-                        no_msg += 1 
-            bot.send_message(message.chat.id, text=f'Ваш пост был отправлен пользователям ботаnСтастистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно') 
-            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно {no_msg} - Неуспешно') 
-            print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно {no_msg} - Неуспешно')
+
+            yes_msg = 0
+            no_msg = 0
+            print_msg = ''
+
+            with open('msg_file.txt', 'r') as inf:
+                print_msg = inf.read()
+
+            # Переменная для содержимого фото. Если фото нет, переменная останется None.
+            print_img = None
+            try:
+                with open('img_msg.jpg', 'rb') as imginf:
+                    print_img = imginf.read()
+            except Exception as e:
+                # Если фото не смогло быть загружено, печатаем ошибку и продолжаем.
+                print(f"Не удалось загрузить файл изображения: {e}")
+
+            # Перебираем всех пользователей и отправляем им сообщение или фото.
+            for user_id in user_ids:
+                try:
+                    # Пытаемся отправить фото если оно доступно.
+                    if print_img:
+                        bot.send_photo(user_id, photo=print_img, caption=print_msg)
+                    else:
+                        # Если фото нет, отправляем только текстовое сообщение.
+                        bot.send_message(user_id, text=print_msg)
+                    yes_msg += 1  # Успех, сообщение отправлено.
+                except Exception as e:
+                    # Если возникла ошибка при отправке, печатаем её и инкрементируем счётчик ошибок.
+                    print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
+                    no_msg += 1
+
+            # В конце отправляем статистику об отправке сообщений.
+            bot.send_message(message.chat.id, text=f'Ваш пост был отправлен пользователям бота.nСтатистика сообщений:n{yes_msg} - ✔️ Удачноn{no_msg} - ✖️ Неудачно')
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
     elif(message.text == '❌ Оключить бота'):
         if check_admin_system(message.chat.id, connection):
             bot.send_message(message.chat.id, text='use cmd:/bot_off_21')

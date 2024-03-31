@@ -195,7 +195,7 @@ def func(message):
         bot.send_message(message.chat.id, text = 'Пока марафон не был объявлен. Следите за новостями')
     elif(message.text == '💸 Помочь проекту'):
         markup = types.InlineKeyboardMarkup()
-        donate_btm = types.InlineKeyboardButton('Задонатить проекту', url = 'https://t.me/noUser125')
+        donate_btm = types.InlineKeyboardButton('Задонатить проекту', url = 'https://yoomoney.ru/to/4100118124724158')
         markup.add(donate_btm)
         bot.send_message(message.chat.id, text = '''
 Поддержите наш бот: ваша помощь - наша поддержка 🤝💡

@@ -5,7 +5,7 @@ from mysql.connector import Error
 import os
 import logging
 from datetime import datetime
-from setting_bot import api_TOKEN1
+from setting_bot import api_TOKEN1, msql_HOST1, msql_USER1, msql_PWD1, msql_DATABASE
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
@@ -98,10 +98,10 @@ logging.basicConfig(level=logging.INFO, filename=infolog_log,filemode="w",
 #####################################################################################
 try: #Подключение к бд
     connection = mysql.connector.connect(
-        host='localhost',
-        user="root",
-        passwd="123456adS",
-        database="stavki_ded"
+       host=msql_HOST1, 
+        user=msql_USER1, 
+        passwd=msql_PWD1, 
+        database=msql_DATABASE 
     )
     cursor = connection.cursor()
     logging.info('Подключение к DataBase успешно')
@@ -189,8 +189,16 @@ def func(message):
             markup.add(sale_price_button)
             markup.add(statistic_button, add_promo)
             markup.add(set_user)
+            markup.add(menu_buttom)
             markup.add(off_bot)
             bot.send_message(message.chat.id, text = "Добро пожаловать, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
+#######################BLOCK###############################  
+    elif(message.text == '®️ Добавить промокод'):
+        bot.reply_to(message, text = 'В разработке...')
+    elif(message.text == '🛍 Добавить скидку на продукт'):
+        bot.reply_to(message, text = 'В разработке...')
+    elif(message.text == '📊 Статистика бота'):
+        bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '💰 Марафон от 1000 до 5000'):
         bot.send_message(message.chat.id, text = 'Пока марафон не был объявлен. Следите за новостями')
     elif(message.text == '💸 Помочь проекту'):
@@ -228,11 +236,32 @@ def func(message):
             markup.add(menu_buttom)
             bot.send_message(message.chat.id, text='''Используйте кнопки управления в меню\nВсе действия логгируются системному администратору'''.format(message.from_user), reply_markup=markup)
     elif(message.text == "🟥 Вернуться в меню"):
- #edit edit edit
+        chat_id = message.chat.id
+        cursor = connection.cursor(buffered=True)
+        cursor.execute("SELECT * FROM users WHERE chat_id = %s", (chat_id,))
+        user = cursor.fetchone()
+        if not user:
+            insert_query = "INSERT INTO users (chat_id, name) VALUES (%s, %s)"
+            cursor.execute(insert_query, (chat_id, message.from_user.first_name))
+            connection.commit()
+        cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
+        user = cursor.fetchone()
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] вернулся в меню бота')
+        print(f'{message.from_user.first_name} [ID:{message.chat.id}] вернулся в меню бота')
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        send_helpbtm = types.KeyboardButton("🆘 Связь с администрацией бота")
+        marafon_btml = types.KeyboardButton('💰 Марафон от 1000 до 5000')
+        donate_btm = types.KeyboardButton('💸 Помочь проекту')
+        info_btml = types.KeyboardButton("👨‍🦳 О боте")
+        markup.add(send_helpbtm)
+        markup.add(marafon_btml)
+        markup.add(donate_btm)
+        markup.add(info_btml)
         if check_admin_rights(message.chat.id, connection):
             admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
             markup.add(admin_panelbtm)
-        bot.send_message(message.chat.id, text="Добро пожаловать в прогнозы от деда Ставыча\nДля получения доступа к боту вам нужно приобрести ключ\nЕсли у вас есть ключ, можете использовать кнопку меню.".format(message.from_user), reply_markup=markup)
+        bot.send_message(message.chat.id, text='''Вы успешно вернулись в меню'''.format(message.from_user), reply_markup=markup)
+
     elif(message.text == '📝 Открыть TePost Editor' or message.text == '🟥 Вернуться в TePost Editor'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True) 

@@ -5,6 +5,7 @@ from mysql.connector import Error
 import os
 import logging
 from datetime import datetime
+import time
 from setting_bot import api_TOKEN1, msql_HOST1, msql_USER1, msql_PWD1, msql_DATABASE
 #####################################################################################
 import requests
@@ -50,7 +51,7 @@ def check_admin_system(chat_id, connection):
         admin_level = cursor.fetchone()
         cursor.close()
         # Возвращает True, если уровень админа 6 и выше, иначе False
-        return admin_level and admin_level[0] >= 6
+        return admin_level and admin_level[0] >= 7
     except Exception as e:
         print(f"An error occurred: {e}")
         return False  # В случае возникновения исключения возвращает False
@@ -83,6 +84,21 @@ def process_user_search(message):
             bot.send_message(message.chat.id, 'Пользователь не найден.')
     else:
         bot.send_message(message.chat.id, 'Не удалось подключиться к базе данных.')
+def get_users(): 
+    '''Получает списко всех пользователей id и name и помещает в переменную user_list''' 
+    # Создание курсора с использованием контекстного менеджера для автоматического закрытия
+    with connection.cursor(buffered=True) as cursor: 
+        # Запрос на получение данных 
+        query = "SELECT id, name FROM users" 
+        cursor.execute(query) 
+        # Получение всех результатов 
+        user_list = cursor.fetchall()             
+
+    # В контекстном менеджере курсор закроется автоматически
+    # Соединение не закрываем, если оно будет использоваться в других местах
+    return user_list
+
+
 
 ##################################SETTINGS##################################################
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -96,19 +112,38 @@ logging.basicConfig(level=logging.INFO, filename=infolog_log,filemode="w",
 #logging.error("An ERROR")
 #ogging.critical("A message of CRITICAL severity")
 #####################################################################################
-try: #Подключение к бд
-    connection = mysql.connector.connect(
-       host=msql_HOST1, 
-        user=msql_USER1, 
-        passwd=msql_PWD1, 
-        database=msql_DATABASE 
-    )
-    cursor = connection.cursor()
-    logging.info('Подключение к DataBase успешно')
-    print('Подключение к DataBase успешно')
-except Error as e:
-    logging.info(f"Ошибка '{e}' произошла")
-    print(f"Ошибка '{e}' произошла")
+def connect_to_database(host, user, password, database, max_retries=5):
+    retries = 0
+    while retries < max_retries:
+        try:
+            connection = mysql.connector.connect(
+                host=host,
+                user=user,
+                passwd=password,
+                database=database
+            )
+            cursor = connection.cursor()
+            logging.info('Подключение к DataBase успешно')
+            print('Подключение к DataBase успешно')
+            return connection
+        except Error as e: 
+            logging.info(f"Ошибка '{e}' произошла") 
+            print(f"Ошибка '{e}' произошла")
+            if retries < max_retries:
+                retries += 1
+                wait_time = 2**retries
+                logging.info('Пытаемся повторно подключиться через {wait_time} сек.')
+                print(f"Пытаемся повторно подключиться через {wait_time} сек.")
+                time.sleep(wait_time)
+                
+    print("Не удалось подключиться к базе данных после нескольких попыток.")
+    return None
+
+connection = connect_to_database(msql_HOST1, msql_USER1, msql_PWD1, msql_DATABASE)
+
+if connection is None:
+    # Handle connection failure
+    pass
 
 create_database_query = "CREATE DATABASE stavki_ded"
 create_database(connection, create_database_query) #создание БД
@@ -174,23 +209,29 @@ def func(message):
 Здесь вы можете обратиться к нам с любыми вопросами или проблемами. Пожалуйста, описывайте ваш запрос подробно для быстрого и точного ответа. 
 
 Для начала взаимодействия, просто кликните на кнопку ниже. Мы ждём вашего сообщения!'''.format(message.from_user), reply_markup=markup)
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл меню обращения в поддержку')
     elif(message.text == '🛠 Админ-панель' or message.text =='/settings'):
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            free_pages_button = types.KeyboardButton('📝 Открыть TePost Editor')
+            te_post_editor = types.KeyboardButton('📝 Открыть TePost Editor')
             sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
             statistic_button = types.KeyboardButton('📊 Статистика бота')
             add_promo = types.KeyboardButton('®️ Добавить промокод')
             set_user = types.KeyboardButton('👨‍💻 Настройка пользователей')
             off_bot = types.KeyboardButton('❌ Оключить бота')
-            markup.add(free_pages_button)
-            markup.add(sale_price_button)
-            markup.add(statistic_button, add_promo)
-            markup.add(set_user)
-            markup.add(menu_buttom)
-            markup.add(off_bot)
+            if check_admin_system(message.chat.id, connection):
+                markup.add(te_post_editor)
+                markup.add(sale_price_button)
+                markup.add(statistic_button, add_promo)
+                markup.add(set_user)
+                markup.add(menu_buttom)
+                markup.add(off_bot)
+            else:
+                markup.add(te_post_editor)
+                markup.add(set_user)
+                markup.add(menu_buttom)
             bot.send_message(message.chat.id, text = "Добро пожаловать, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
 #######################BLOCK###############################  
     elif(message.text == '®️ Добавить промокод'):
@@ -209,6 +250,7 @@ def func(message):
 Поддержите наш бот: ваша помощь - наша поддержка 🤝💡
 Захотели отблагодарить нас за выигрыш? Отличная идея! Ваша поддержка помогает нам оплачивать труд команды и содержание оборудования. 🛠️💻
 Чтобы сделать взнос, воспользуйтесь ссылкой ниже. Мы предлагаем различные способы оплаты для удобства. Пока что проект живет на ваши донаты, и каждый вклад ценен для нас! 🙏💖'''.format(message.from_user), reply_markup=markup)
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл донат проекту') 
     elif(message.text == '👨‍🦳 О боте'):
         bot.send_message(message.chat.id, text = '''
 Этот бот - результат слияния передовых технологий и глубоких знаний команды экспертов в области спорта. 🤖🏅
@@ -220,21 +262,36 @@ def func(message):
 У нас грандиозные планы, и вы можете стать частью этого увлекательного путешествия. Не удаляйте бота - следите за нашими обновлениями и используйте наши прогнозы для достижения успеха. 🚀🎯
 
 Связаться с отделом развития можно по электронной почте: kirilooth@yandex.ru 📥''' )
+        logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл информацию о боте')
     elif(message.text == '👨‍💻 Настройка пользователей' or message.text == '👨‍💻 Назад в UserEditor'):
         if check_admin_rights(message.chat.id, connection):
-            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
-            bot.send_message(message.chat.id, text='Уважаемый администратор, вам запрещенно изменять права для пользователей. Для получения этой функции обратитесь к системному администратору.')
-        if check_admin_system(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в права пользователей. (Удачно)')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             check_btm = types.InlineKeyboardButton('🔍 Информация о пользователе')
+            user_listbtm = types.InlineKeyboardButton('🧾 Список пользователей')
             setadm_btm = types.InlineKeyboardButton('📝 Изменить права для пользователя')
             ban_btm = types.InlineKeyboardButton('⛔️ Заблокировать пользователя')
-            markup.add(check_btm)
-            markup.add(setadm_btm)
-            markup.add(ban_btm)
-            markup.add(menu_buttom)
+            if check_admin_system(message.chat.id, connection):
+                markup.add(check_btm)
+                markup.add(user_listbtm)
+                markup.add(setadm_btm)
+                markup.add(ban_btm)
+                markup.add(menu_buttom)
+            else:
+                markup.add(check_btm)
+                markup.add(user_listbtm)
+                markup.add(menu_buttom)
             bot.send_message(message.chat.id, text='''Используйте кнопки управления в меню\nВсе действия логгируются системному администратору'''.format(message.from_user), reply_markup=markup)
+        else:
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
+    elif(message.text == '🧾 Список пользователей'):
+        if check_admin_rights(message.chat.id, connection):
+            user_list = get_users()
+            formatted_user_list = '\n'.join(f"{user_id} {user_name}" for user_id, user_name in user_list)
+            bot.send_message(message.chat.id, text=f"Список пользователей:\n{formatted_user_list}")
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл список пользователей')
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл список пользователей')
     elif(message.text == "🟥 Вернуться в меню"):
         chat_id = message.chat.id
         cursor = connection.cursor(buffered=True)

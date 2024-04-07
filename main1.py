@@ -10,7 +10,7 @@ from setting_bot import api_TOKEN1, msql_HOST1, msql_USER1, msql_PWD1, msql_DATA
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
-
+live_message = False
 try:
     response = requests.get('https://api.telegram.org/', timeout=60)
     # Обработка успешного ответа
@@ -215,6 +215,7 @@ def func(message):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            live_btml = types.KeyboardButton('💬 Режим LIVE')
             te_post_editor = types.KeyboardButton('📝 Открыть TePost Editor')
             sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
             statistic_button = types.KeyboardButton('📊 Статистика бота')
@@ -222,6 +223,7 @@ def func(message):
             set_user = types.KeyboardButton('👨‍💻 Настройка пользователей')
             off_bot = types.KeyboardButton('❌ Оключить бота')
             if check_admin_system(message.chat.id, connection):
+                markup.add(live_btml)
                 markup.add(te_post_editor)
                 markup.add(sale_price_button)
                 markup.add(statistic_button, add_promo)
@@ -229,11 +231,12 @@ def func(message):
                 markup.add(menu_buttom)
                 markup.add(off_bot)
             else:
+                markup.add(live_btml)
                 markup.add(te_post_editor)
                 markup.add(set_user)
                 markup.add(menu_buttom)
             bot.send_message(message.chat.id, text = "Добро пожаловать, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
-#######################BLOCK###############################  
+#######################BLOCK###############################
     elif(message.text == '®️ Добавить промокод'):
         bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '🛍 Добавить скидку на продукт'):
@@ -263,6 +266,26 @@ def func(message):
 
 Связаться с отделом развития можно по электронной почте: kirilooth@yandex.ru 📥''' )
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл информацию о боте')
+    elif(message.text == '💬 Режим LIVE'):
+        if check_admin_rights(message.chat.id, connection):
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в LIVE режим')
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            on_off_livebtm = types.KeyboardButton('🔛 Включить/Выключить режим')
+            markup.add(on_off_livebtm)
+            markup.add(menu_buttom)
+            bot.send_message(message.chat.id, text = "Уважаемый администратор, вы умпешно перешли в режим LIVE, все ваши сообщения будут отправляться сразу пользователям на прямую. Вы можете использовать фотографии. Все действия логируются нашему системному администратору".format(message.from_user), reply_markup=markup)
+    elif(message.text == '🔛 Включить/Выключить режим'):
+        global live_message
+        if check_admin_rights(message.chat.id, connection):
+            if live_message:
+                logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] выключил Live режим ')
+                print((f'{message.from_user.first_name} [ID:{message.chat.id}] выключил Live режим '))
+                live_message = False
+            else:
+                logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] включил Live режим ')
+                print((f'{message.from_user.first_name} [ID:{message.chat.id}] включил Live режим '))
+                live_message = True
+
     elif(message.text == '👨‍💻 Настройка пользователей' or message.text == '👨‍💻 Назад в UserEditor'):
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в права пользователей. (Удачно)')
@@ -338,7 +361,7 @@ def func(message):
             msg = bot.send_message(message.chat.id, text='Введите текст который вы хотите опубликовать в посте\nВ посте запрещено:\n- Использовать мат, ругательство\n- Оскороблять кого-либо, выражать ненависть\nПосле того как вы отправите текст используйте кнопки TePost Editor')
             bot.register_next_step_handler(msg, after_text_2)
     elif(message.text == '🔍 Информация о пользователе'):
-        if check_admin_system(message.chat.id, connection):
+        if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             back_user_btm = types.InlineKeyboardButton('👨‍💻 Назад в UserEditor')
             markup.add(back_user_btm)
@@ -452,11 +475,46 @@ def func(message):
             bot.send_message(message.chat.id, text='use cmd:/bot_off_21')
         else:
             bot.send_message(message.chat.id, text='Отключать бота имеет право только системный администратор\nОбратитесь к администратору в Telegram')
-    elif(message.text == '/bot_off_21'):
-        if check_admin_system(message.chat.id, connection):
-            bot.send_message(message.chat.id, text='Отключение бота')
-            print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
-            bot.stop_polling()
+@bot.message_handler(func=lambda message: message.text == '/bot_off_21' and check_admin_system(message.chat.id, connection))
+def handle_bot_off(message):
+    bot.send_message(message.chat.id, text='Отключение бота')
+    logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
+    print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
+    bot.stop_polling()
+@bot.message_handler(content_types=['photo', 'text'])
+def handle_all_messages(message):
+    global live_message
+    user_id = message.from_user.id
+
+    # Обработка комманды активации / деактивации live режима
+    if message.text == '🔛 Включить/Выключить режим':
+        if check_admin_rights(user_id, connection):
+            if live_message:
+                logging.info(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
+                print(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
+                live_message = False
+            else:
+                logging.info(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
+                print(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
+                live_message = True
+
+    # Дальше идет обработка обычных текстовых сообщений и сообщений с фотографиями
+    # Если live режим активирован и пользователь является админом, сообщения пересылаются всем пользователям.
+    if check_admin_rights(user_id, connection):
+        if live_message:
+            chat_ids = [1480535657]
+            for chat_id in chat_ids:
+                if message.content_type == 'photo':
+                    photo_id = message.photo[-1].file_id
+                    bot.send_photo(chat_id, photo_id, message.caption)
+                elif message.content_type == 'text':
+                    bot.send_message(chat_id, message.text)
+
+    # Блок обработки обычных текстовых сообщений здесь
+    # Он выполнится как для админа, так и для обычных пользователей, и он не зависит от переменной live_message
+    if message.content_type == 'text':
+        # Здесь ваш код обработки обычных текстовых сообщений
+        pass
 
 ###################################################
 

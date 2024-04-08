@@ -215,9 +215,9 @@ def func(message):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            live_btml = types.KeyboardButton('💬 Режим LIVE')
+            live_btml = types.KeyboardButton('💬 [NEW] Режим LIVE')
             te_post_editor = types.KeyboardButton('📝 Открыть TePost Editor')
-            sale_price_button = types.KeyboardButton('🛍 Добавить скидку на продукт')
+            sale_price_button = types.KeyboardButton('🛍 Изменить скидку на продукт')
             statistic_button = types.KeyboardButton('📊 Статистика бота')
             add_promo = types.KeyboardButton('®️ Добавить промокод')
             set_user = types.KeyboardButton('👨‍💻 Настройка пользователей')
@@ -239,7 +239,7 @@ def func(message):
 #######################BLOCK###############################
     elif(message.text == '®️ Добавить промокод'):
         bot.reply_to(message, text = 'В разработке...')
-    elif(message.text == '🛍 Добавить скидку на продукт'):
+    elif(message.text == '🛍 Изменить скидку на продукт'):
         bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '📊 Статистика бота'):
         bot.reply_to(message, text = 'В разработке...')
@@ -266,15 +266,16 @@ def func(message):
 
 Связаться с отделом развития можно по электронной почте: kirilooth@yandex.ru 📥''' )
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл информацию о боте')
-    elif(message.text == '💬 Режим LIVE'):
+    elif(message.text == '💬 [NEW] Режим LIVE'):
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в LIVE режим')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            on_off_livebtm = types.KeyboardButton('🔛 Включить/Выключить режим')
+            on_off_livebtm = types.KeyboardButton('🔛 Включить/Выключить LIVE')
             markup.add(on_off_livebtm)
             markup.add(menu_buttom)
-            bot.send_message(message.chat.id, text = "Уважаемый администратор, вы умпешно перешли в режим LIVE, все ваши сообщения будут отправляться сразу пользователям на прямую. Вы можете использовать фотографии. Все действия логируются нашему системному администратору".format(message.from_user), reply_markup=markup)
-    elif(message.text == '🔛 Включить/Выключить режим'):
+            bot.send_message(message.chat.id, text = '''Уважаемый администратор! Для активации режима LIVE воспользуйтесь соответствующими кнопками в вашем меню. 
+Помните, что все выполняемые действия регистрируются системным администратором.'''.format(message.from_user), reply_markup=markup)
+    elif(message.text == '🔛 Включить/Выключить LIVE'):
         global live_message
         if check_admin_rights(message.chat.id, connection):
             if live_message:

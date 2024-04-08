@@ -281,10 +281,15 @@ def func(message):
                 logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] выключил Live режим ')
                 print((f'{message.from_user.first_name} [ID:{message.chat.id}] выключил Live режим '))
                 live_message = False
+                bot.send_message(message.chat.id, text = 'Вы успешно выключили режим LIVE')
             else:
                 logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] включил Live режим ')
                 print((f'{message.from_user.first_name} [ID:{message.chat.id}] включил Live режим '))
                 live_message = True
+                bot.send_message(message.chat.id, text = '''Вы активировали бета-версию режима LIVE.\n 
+В этом режиме любые фотографии, которые вы отправляете боту, мгновенно транслируются пользователям бота.\n 
+Важно следить за качеством контента: ошибки не допустимы, а возможности удаления отправленных фотографий нет.\n 
+Пожалуйста, не забывайте выходить из этого режима после его использования.''')
 
     elif(message.text == '👨‍💻 Настройка пользователей' or message.text == '👨‍💻 Назад в UserEditor'):
         if check_admin_rights(message.chat.id, connection):
@@ -470,51 +475,63 @@ def func(message):
             bot.send_message(message.chat.id, text=f'Ваш пост был отправлен пользователям бота.\nСтатистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно')
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
-    elif(message.text == '❌ Оключить бота'):
+    elif(message.text == '/bot_off_21'):
         if check_admin_system(message.chat.id, connection):
-            bot.send_message(message.chat.id, text='use cmd:/bot_off_21')
-        else:
-            bot.send_message(message.chat.id, text='Отключать бота имеет право только системный администратор\nОбратитесь к администратору в Telegram')
-@bot.message_handler(func=lambda message: message.text == '/bot_off_21' and check_admin_system(message.chat.id, connection))
-def handle_bot_off(message):
-    bot.send_message(message.chat.id, text='Отключение бота')
-    logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
-    print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
-    bot.stop_polling()
+            bot.send_message(message.chat.id, text='Отключение бота')
+            logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
+            print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
+            bot.stop_polling()
 @bot.message_handler(content_types=['photo', 'text'])
 def handle_all_messages(message):
     global live_message
     user_id = message.from_user.id
 
     # Обработка комманды активации / деактивации live режима
-    if message.text == '🔛 Включить/Выключить режим':
-        if check_admin_rights(user_id, connection):
-            if live_message:
-                logging.info(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
-                print(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
-                live_message = False
-            else:
-                logging.info(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
-                print(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
-                live_message = True
+    #if message.text == '🔛 Включить/Выключить режим':
+    #   if check_admin_rights(user_id, connection):
+    #        if live_message:
+    #            logging.info(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
+     #           print(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
+      #          live_message = False
+       #         bot.send_message(message.chat.id, text = 'Вы успешно включили режим LIVE')
+        #    else:
+         #       logging.info(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
+          #      print(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
+           #     bot.send_message(message.chat.id, text = 'Вы успешно выключили режим LIVE')
+            #    live_message = True
 
     # Дальше идет обработка обычных текстовых сообщений и сообщений с фотографиями
     # Если live режим активирован и пользователь является админом, сообщения пересылаются всем пользователям.
     if check_admin_rights(user_id, connection):
         if live_message:
-            chat_ids = [1480535657]
-            for chat_id in chat_ids:
-                if message.content_type == 'photo':
-                    photo_id = message.photo[-1].file_id
-                    bot.send_photo(chat_id, photo_id, message.caption)
-                elif message.content_type == 'text':
-                    bot.send_message(chat_id, message.text)
+            cursor = connection.cursor()
+            query = "SELECT chat_id FROM users"
+            cursor.execute(query)
+            user_ids = [row[0] for row in cursor.fetchall()]
+            cursor.close()
+            yes_msg = 0
+            no_msg = 0
+            for chat_id in user_ids:
+                try:
+                    if message.content_type == 'photo':
+                        photo_id = message.photo[-1].file_id
+                        bot.send_photo(chat_id, photo_id, message.caption)
+                        yes_msg += 1
+                    elif message.content_type == 'text':
+                        bot.send_message(chat_id, message.text)
+                        yes_msg += 1
+                except Exception as e:
+                    print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
+                    no_msg += 1
+            bot.send_message(message.chat.id, text=f'Ваш LIVE пост был отправлен пользователям бота.\nСтатистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно')
+            logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил LIVE пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
+            print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил LIVE пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
 
     # Блок обработки обычных текстовых сообщений здесь
     # Он выполнится как для админа, так и для обычных пользователей, и он не зависит от переменной live_message
-    if message.content_type == 'text':
+    #if message.content_type == 'text':
         # Здесь ваш код обработки обычных текстовых сообщений
-        pass
+     #   pass
 
 ###################################################
 

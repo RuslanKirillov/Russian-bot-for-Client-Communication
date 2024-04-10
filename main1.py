@@ -11,6 +11,7 @@ from setting_bot import api_TOKEN1, msql_HOST1, msql_USER1, msql_PWD1, msql_DATA
 import requests
 from requests.exceptions import ReadTimeout
 live_message = False
+chat_data = {}
 try:
     response = requests.get('https://api.telegram.org/', timeout=60)
     # Обработка успешного ответа
@@ -97,7 +98,21 @@ def get_users():
     # В контекстном менеджере курсор закроется автоматически
     # Соединение не закрываем, если оно будет использоваться в других местах
     return user_list
+def process_response(message):
+    # Извлекаем сохраненный chat_id из chat_data
+    user_login = chat_data[message.chat.id]['user_login']  # Теперь извлекаем user_login
+    chat_id = chat_data[message.chat.id]['chat_id']
 
+    # Получаем текст сообщения от администратора
+    response_text = message.text
+
+    # Отправляем ответное сообщение пользователю
+    bot.send_message(chat_id, text=response_text)
+
+    logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] ответил пользователю {user_login} [ID:{chat_id}]:\nText: {message.text}')
+    print(f'{message.from_user.first_name}[ID:{message.chat.id}] ответил пользователю {user_login} [ID:{chat_id}]:\nText: {message.text}')
+    # Удаляем информацию о сообщении после ответа
+    del chat_data[message.chat.id]
 
 
 ##################################SETTINGS##################################################
@@ -157,6 +172,16 @@ CREATE TABLE IF NOT EXISTS users (
   PRIMARY KEY (id)
 ) ENGINE = InnoDB
 """
+cheate_message_table = """
+CREATE TABLE message (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    login VARCHAR(255),
+    chat_id BIGINT,
+    text TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+"""
+execute_query(connection, cheate_message_table)
 execute_query(connection, create_users_table)
 
 bot = telebot.TeleBot(api_TOKEN1, parse_mode=None)
@@ -201,9 +226,9 @@ def send_welcome(message):
 @bot.message_handler(content_types=['text'])
 def func(message):
     if(message.text == "🆘 Связь с администрацией бота"):
-        markup = types.InlineKeyboardMarkup()
-        id_send_help_btml = types.InlineKeyboardButton('Обратиться в поддержку', url='https://t.me/noUser125')
-        markup.add(id_send_help_btml)
+    #    markup = types.InlineKeyboardMarkup()
+    #    id_send_help_btml = types.InlineKeyboardButton('Обратиться в поддержку', url='https://t.me/noUser125')
+    #    markup.add(id_send_help_btml)
         bot.send_message(message.chat.id, text= '''Добро пожаловать в нашу службу поддержки, уважаемый пользователь! Вы находитесь в разделе общения с администрацией.
 
 Здесь вы можете обратиться к нам с любыми вопросами или проблемами. Пожалуйста, описывайте ваш запрос подробно для быстрого и точного ответа. 
@@ -222,17 +247,20 @@ def func(message):
             add_promo = types.KeyboardButton('®️ Добавить промокод')
             set_user = types.KeyboardButton('👨‍💻 Настройка пользователей')
             off_bot = types.KeyboardButton('❌ Оключить бота')
+            message_userbtm = types.KeyboardButton('✉️ Обращения пользователей')
             if check_admin_system(message.chat.id, connection):
-                markup.add(live_btml)
-                markup.add(te_post_editor)
+                markup.add(live_btml,te_post_editor)
+                markup.add(message_userbtm)
+                #markup.add(te_post_editor)
                 markup.add(sale_price_button)
                 markup.add(statistic_button, add_promo)
                 markup.add(set_user)
                 markup.add(menu_buttom)
                 markup.add(off_bot)
             else:
-                markup.add(live_btml)
-                markup.add(te_post_editor)
+                markup.add(live_btml,te_post_editor)
+                #markup.add(te_post_editor)
+                markup.add(message_userbtm)
                 markup.add(set_user)
                 markup.add(menu_buttom)
             bot.send_message(message.chat.id, text = "Добро пожаловать, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)
@@ -245,6 +273,27 @@ def func(message):
         bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '💰 Марафон от 1000 до 5000'):
         bot.send_message(message.chat.id, text = 'Пока марафон не был объявлен. Следите за новостями')
+    elif(message.text == '✉️ Обращения пользователей'):
+        if check_admin_rights(message.chat.id, connection):
+            cursor = connection.cursor()
+            query = "SELECT id, login, text FROM message"
+            cursor.execute(query)
+            messages = cursor.fetchall()
+
+            markup = types.InlineKeyboardMarkup(row_width=1)
+
+            for msg in messages:
+                user_id, user_login, text = msg
+                # Каждой кнопке будет назначен уникальный callback_data, пример 'msg_1', 'msg_2' и так далее
+                button_text = f'Обращение от {user_login}' if user_login else 'Обращение от анонимного пользователя'
+                callback_data = f'msg_{user_id}'
+                button = types.InlineKeyboardButton(button_text, callback_data=callback_data)
+                markup.add(button)
+
+            cursor.close()
+            message_text = 'Список обращений пользователей: '
+            bot.send_message(message.chat.id, text=message_text, reply_markup=markup)
+
     elif(message.text == '💸 Помочь проекту'):
         markup = types.InlineKeyboardMarkup()
         donate_btm = types.InlineKeyboardButton('Задонатить проекту', url = 'https://yoomoney.ru/to/4100118124724158')
@@ -336,7 +385,7 @@ def func(message):
         print(f'{message.from_user.first_name} [ID:{message.chat.id}] вернулся в меню бота')
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         send_helpbtm = types.KeyboardButton("🆘 Связь с администрацией бота")
-        marafon_btml = types.KeyboardButton('💰 Марафон от 1000 до 5000')
+        marafon_btml = types.KeyboardButton('💰 Марафон от 2500 до 14000')
         donate_btm = types.KeyboardButton('💸 Помочь проекту')
         info_btml = types.KeyboardButton("👨‍🦳 О боте")
         markup.add(send_helpbtm)
@@ -482,6 +531,92 @@ def func(message):
             logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
             print(f'{message.from_user.first_name}[ID:{message.chat.id}] отключил бота')
             bot.stop_polling()
+    else:
+        cursor = connection.cursor()
+        user_text = message.text
+        user_login = message.chat.username if message.chat.username else 'Anonymous'
+        chat_id = message.chat.id
+
+        # Формируем параметризованный SQL-запрос
+        query = "INSERT INTO message (login, chat_id, text) VALUES (%s, %s, %s)"
+
+        try:
+            # Выполняем параметризованный запрос
+            cursor.execute(query, (user_login, chat_id, user_text))
+            connection.commit()  # Фиксируем изменения в базе данных
+            logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отправил сообщение в поддержку\nText: {user_text}')
+            print(f'{message.from_user.first_name}[ID:{message.chat.id}] отправил сообщение в поддержку\nText: {user_text}')
+        except mysql.connector.Error as err:
+            logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] ошибка отправки сообщения{err}.\nText: {user_text}')
+            print('Ошибка отправки сообщения:', err)
+        finally:
+            # Закрываем соединение
+            cursor.close()
+@bot.callback_query_handler(func=lambda call: call.data.startswith('msg_'))
+def handle_query(call):
+    message_id = int(call.data.split('_')[1])  # Извлеките ID сообщения из callback_data
+    cursor = connection.cursor()
+    query = "SELECT text FROM message WHERE id = %s"
+    cursor.execute(query, (message_id,))
+    message = cursor.fetchone()[0]
+
+    # Подготовка кнопок для ответа пользователю
+    reply_markup = types.InlineKeyboardMarkup()
+    reply_button = types.InlineKeyboardButton('Ответить', callback_data=f'reply_{message_id}')
+    delete_button = types.InlineKeyboardButton('Удалить', callback_data=f'delmsg_{message_id}')
+    reply_markup.add(reply_button, delete_button)
+
+    bot.send_message(call.message.chat.id, text=f'Текст обращения: {message}', reply_markup=reply_markup)
+    cursor.close()
+@bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
+def handle_reply(call):
+    message_id = int(call.data.split('_')[1])  # Извлеките ID сообщения из callback_data
+    user_login = call.message.chat.username if call.message.chat.username else 'Anonymous'
+
+    
+    # Получаем chat_id пользователя для ответа
+    cursor = connection.cursor()
+    query = "SELECT chat_id FROM message WHERE id = %s"
+    cursor.execute(query, (message_id,))
+    chat_id = cursor.fetchone()[0]
+    cursor.close()
+
+    # Сохраняем информацию о сообщении, на которое админ должен ответить
+    chat_data[call.message.chat.id] = {'chat_id': chat_id, 'message_id': message_id, 'user_login': user_login}
+    
+    # Отправляем сообщение администратору чтобы он мог написать ответ
+    bot.send_message(call.message.chat.id, text='Введите ваше сообщение для ответа пользователю:')
+    
+    # Вешаем следующий шаг на функцию которая будет ловить ответное сообщение
+    bot.register_next_step_handler(call.message, process_response)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('delmsg_'))
+def handle_delete(call):
+    if check_admin_system(call.from_user.id, connection):
+        try:
+
+            # Извлеките ID сообщения из callback_data
+            message_id = int(call.data.split('_')[1])
+            # Удаление сообщения из базы данных
+            cursor = connection.cursor()
+            query = "DELETE FROM message WHERE id = %s"
+            cursor.execute(query, (message_id,))
+            
+            # Потребуется вызвать connection.commit(), если используете базу данных,
+            # требующую подтверждения транзакции, например, PostgreSQL или MySQL
+            connection.commit()
+
+            cursor.close()
+        
+            # Отправляем подтверждение об удалении пользователю, который нажал кнопку
+            bot.send_message(call.message.chat.id, text='Сообщение успешно удалено.')
+            logging.info(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] удалил сообщение пользователя')
+            print((f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] удалил сообщение пользователя'))
+        except Exception as e:
+            # Перехватываем любое исключение и сообщаем об ошибке
+            bot.send_message(call.message.chat.id, text=f'Произошла ошибка при удалении сообщения: {e}.')
+    else:
+        bot.send_message(call.message.chat.id, text='Вам запрещено удалять сообщения, обратитесь к системному администратору')
+
 @bot.message_handler(content_types=['photo', 'text'])
 def handle_all_messages(message):
     global live_message

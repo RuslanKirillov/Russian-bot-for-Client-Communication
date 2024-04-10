@@ -546,6 +546,14 @@ def func(message):
             connection.commit()  # Фиксируем изменения в базе данных
             logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отправил сообщение в поддержку\nText: {user_text}')
             print(f'{message.from_user.first_name}[ID:{message.chat.id}] отправил сообщение в поддержку\nText: {user_text}')
+            # Поиск админов с уровнем доступа 3 и выше 
+            admin_query = "SELECT chat_id FROM users WHERE admin >= 3"
+            cursor.execute(admin_query)
+            admins = cursor.fetchall()
+
+            for admin in admins:
+                admin_chat_id = admin[0]
+                bot.send_message(admin_chat_id, "Пришло новое обращение")
         except mysql.connector.Error as err:
             logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] ошибка отправки сообщения{err}.\nText: {user_text}')
             print('Ошибка отправки сообщения:', err)

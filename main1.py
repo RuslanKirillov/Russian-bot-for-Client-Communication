@@ -119,6 +119,7 @@ def process_response(message):
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 infolog_log = f"infolog_{current_time}.log"
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
+adm_back_btm = types.KeyboardButton('🟥 Вернуться в админ-панель')
 logging.basicConfig(level=logging.INFO, filename=infolog_log,filemode="w",
                     format="%(asctime)s %(levelname)s %(message)s")
 #logging.debug("A DEBUG Message")
@@ -201,7 +202,7 @@ def send_welcome(message):
     print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в боте')
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     send_helpbtm = types.KeyboardButton("🆘 Связь с администрацией бота")
-    marafon_btml = types.KeyboardButton('💰 Марафон от 1000 до 5000')
+    marafon_btml = types.KeyboardButton('💰 Марафон от 2500 до 14000')
     donate_btm = types.KeyboardButton('💸 Помочь проекту')
     info_btml = types.KeyboardButton("👨‍🦳 О боте")
     markup.add(send_helpbtm)
@@ -233,9 +234,9 @@ def func(message):
 
 Здесь вы можете обратиться к нам с любыми вопросами или проблемами. Пожалуйста, описывайте ваш запрос подробно для быстрого и точного ответа. 
 
-Для начала взаимодействия, просто кликните на кнопку ниже. Мы ждём вашего сообщения!'''.format(message.from_user), reply_markup=markup)
+Для начала взаимодействия, просто напишите сообщение боту. Мы ждём вашего обращения!''')
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл меню обращения в поддержку')
-    elif(message.text == '🛠 Админ-панель' or message.text =='/settings'):
+    elif(message.text == '🛠 Админ-панель' or message.text =='/settings' or message.text == '🟥 Вернуться в админ-панель'):
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
@@ -271,7 +272,7 @@ def func(message):
         bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '📊 Статистика бота'):
         bot.reply_to(message, text = 'В разработке...')
-    elif(message.text == '💰 Марафон от 1000 до 5000'):
+    elif(message.text == '💰 Марафон от 2500 до 14000'):
         bot.send_message(message.chat.id, text = 'Пока марафон не был объявлен. Следите за новостями')
     elif(message.text == '✉️ Обращения пользователей'):
         if check_admin_rights(message.chat.id, connection):
@@ -321,7 +322,7 @@ def func(message):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             on_off_livebtm = types.KeyboardButton('🔛 Включить/Выключить LIVE')
             markup.add(on_off_livebtm)
-            markup.add(menu_buttom)
+            markup.add(adm_back_btm)
             bot.send_message(message.chat.id, text = '''Уважаемый администратор! Для активации режима LIVE воспользуйтесь соответствующими кнопками в вашем меню. 
 Помните, что все выполняемые действия регистрируются системным администратором.'''.format(message.from_user), reply_markup=markup)
     elif(message.text == '🔛 Включить/Выключить LIVE'):
@@ -354,11 +355,11 @@ def func(message):
                 markup.add(user_listbtm)
                 markup.add(setadm_btm)
                 markup.add(ban_btm)
-                markup.add(menu_buttom)
+                markup.add(adm_back_btm)
             else:
                 markup.add(check_btm)
                 markup.add(user_listbtm)
-                markup.add(menu_buttom)
+                markup.add(adm_back_btm)
             bot.send_message(message.chat.id, text='''Используйте кнопки управления в меню\nВсе действия логгируются системному администратору'''.format(message.from_user), reply_markup=markup)
         else:
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
@@ -407,7 +408,7 @@ def func(message):
             markup.add(edit_textbtm, edit_imgbtm)
             markup.add(promo_postbtm)
             markup.add(send_postbtm)
-            markup.add(menu_buttom)
+            markup.add(adm_back_btm)
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
             bot.send_message(message.chat.id, text = 'Используйте кнопки для редактирования поста\nTePost Editor - специальная разработка для данного бота\nВсе действия логгируются системному администратору'.format(message.from_user), reply_markup=markup)
@@ -420,7 +421,7 @@ def func(message):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             back_user_btm = types.InlineKeyboardButton('👨‍💻 Назад в UserEditor')
             markup.add(back_user_btm)
-            markup.add(menu_buttom)
+            markup.add(adm_back_btm)
             msg = bot.send_message(message.chat.id, 'Введите имя пользователя:')
             bot.register_next_step_handler(msg, process_user_search)
     elif(message.text == '📷 Изменить изображение'):

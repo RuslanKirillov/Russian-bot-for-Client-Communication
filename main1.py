@@ -6,7 +6,7 @@ import os
 import logging
 from datetime import datetime
 import time
-from setting_bot import api_TOKEN1, msql_HOST1, msql_USER1, msql_PWD1, msql_DATABASE
+from setting_bot import api_TOKEN1, msql_HOST1, msql_USER1, msql_PWD1, msql_DATABASE, LOG_DIRECTORY
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
@@ -113,15 +113,23 @@ def process_response(message):
     print(f'{message.from_user.first_name}[ID:{message.chat.id}] ответил пользователю {user_login} [ID:{chat_id}]:\nText: {message.text}')
     # Удаляем информацию о сообщении после ответа
     del chat_data[message.chat.id]
-
-
-##################################SETTINGS##################################################
-current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-infolog_log = f"infolog_{current_time}.log"
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
 adm_back_btm = types.KeyboardButton('🟥 Вернуться в админ-панель')
-logging.basicConfig(level=logging.INFO, filename=infolog_log,filemode="w",
-                    format="%(asctime)s %(levelname)s %(message)s")
+##################################SETTINGS##################################################
+# Генерируем имя файла лога с текущим временем
+current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+infolog_filename = f"infolog_{current_time}.log" 
+infolog_path = f"{LOG_DIRECTORY}/{infolog_filename}"
+
+# Настраиваем базовую конфигурацию для логгера
+logging.basicConfig(
+    level=logging.INFO,
+    filename=infolog_path,  # Полный путь к файлу лога
+    filemode="w",
+    format="%(asctime)s %(levelname)s %(message)s"
+)
+
+
 #logging.debug("A DEBUG Message")
 #logging.info("An INFO")
 #logging.warning("A WARNING")
@@ -166,8 +174,9 @@ create_database(connection, create_database_query) #создание БД
 create_users_table = """
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT,
-  chat_id INT, 
+  chat_id INT UNIQUE,  
   name TEXT NOT NULL,
+  login VARCHAR(255), 
   key_buy INT,
   admin INT,
   PRIMARY KEY (id)
@@ -193,8 +202,8 @@ def send_welcome(message):
     cursor.execute("SELECT * FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
     if not user:
-        insert_query = "INSERT INTO users (chat_id, name) VALUES (%s, %s)"
-        cursor.execute(insert_query, (chat_id, message.from_user.first_name))
+        insert_query = "INSERT INTO users (chat_id, name, login) VALUES (%s, %s, %s)"
+        cursor.execute(insert_query, (chat_id, message.from_user.first_name, message.from_user.username))
         connection.commit()
     cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
@@ -271,7 +280,13 @@ def func(message):
     elif(message.text == '🛍 Изменить скидку на продукт'):
         bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '📊 Статистика бота'):
-        bot.reply_to(message, text = 'В разработке...')
+        if check_admin_rights(message.chat.id, connection):
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            check_fullbtm = types.InlineKeyboardButton('📊 Полная статистика', callback_data='full_stats')
+            check_logbtm = types.InlineKeyboardButton('🧾 Посмотреть логи', callback_data='logi_stats')
+            markup.add(check_fullbtm)
+            markup.add(check_logbtm)
+            bot.send_message(message.chat.id, text = 'Выберите какая статистика бота вас интересует:'.format(message.from_user), reply_markup=markup)
     elif(message.text == '💰 Марафон от 2500 до 14000'):
         bot.send_message(message.chat.id, text = 'Пока марафон не был объявлен. Следите за новостями')
     elif(message.text == '✉️ Обращения пользователей'):
@@ -598,6 +613,42 @@ def handle_reply(call):
     
     # Вешаем следующий шаг на функцию которая будет ловить ответное сообщение
     bot.register_next_step_handler(call.message, process_response)
+@bot.callback_query_handler(func=lambda call: not call.data.startswith('get_file'))
+def callback_query(call):
+    if check_admin_rights(call.message.chat.id, connection):  
+        if call.data == 'full_stats':  
+            bot.answer_callback_query(call.id, 'Block')  
+            bot.send_message(call.message.chat.id, 'В разработке...')  
+        elif call.data == 'logi_stats':
+            try:  
+                bot.answer_callback_query(call.id, 'Успешно')  
+                log_files = [f for f in os.listdir(LOG_DIRECTORY) if f.startswith('infolog_') and f.endswith('.log')] 
+                markup = types.InlineKeyboardMarkup(row_width=1) 
+                for log_file in sorted(log_files): 
+                    btn = types.InlineKeyboardButton(log_file, callback_data=f"get_file|{log_file}") 
+                    markup.add(btn) 
+                bot.send_message(call.message.chat.id, "Выберите файл лога для просмотра:", reply_markup=markup)
+            except:
+                bot.answer_callback_query(call.id, 'Ошибка')
+                bot.send_message(call.message.chat.id, "Ошибка при получении списка файлов log\nСвяжитесь с системным администратором")
+                logging.info(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] неудачно загрузил список лог-файлов')
+
+# Это должно быть зарегистрировано как callback_query_handler
+@bot.callback_query_handler(func=lambda call: call.data.startswith('get_file')) 
+def send_log_file(call):
+    if check_admin_rights(call.message.chat.id, connection):
+        try:  
+            _, filename = call.data.split("|")
+            file_path = os.path.join(LOG_DIRECTORY, filename) 
+            with open(file_path, 'rb') as file: 
+                bot.send_document(call.message.chat.id, file)
+            logging.info(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] получил лог-файл: {filename}')
+            print(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] получил лог-файл: {filename}')
+        except:
+            bot.send_message(call.message.chat.id, text= 'Неудалось отправить лог файл\nСвяжитесь с системным администратором')
+            logging.info(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] неудалось получить лог-файл: {filename}')
+            print(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] неудалось получить лог-файл: {filename}')
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('delmsg_'))
 def handle_delete(call):
     if check_admin_system(call.from_user.id, connection):

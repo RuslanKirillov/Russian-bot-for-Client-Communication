@@ -3,3 +3,4 @@ msql_HOST1 = 'localhost'
 msql_USER1="root"
 msql_PWD1="123456adS"
 msql_DATABASE="stavki_ded"
+LOG_DIRECTORY="/Users/ruslankirillov/Documents/GitHub/std/logi"

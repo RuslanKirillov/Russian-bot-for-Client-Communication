@@ -271,6 +271,7 @@ def func(message):
                 markup.add(live_btml,te_post_editor)
                 #markup.add(te_post_editor)
                 markup.add(message_userbtm)
+                markup.add(statistic_button)
                 markup.add(set_user)
                 markup.add(menu_buttom)
             bot.send_message(message.chat.id, text = "Добро пожаловать, уважаемый администратор.\nИспользуйте кнопки для управления админ-панелью\nВсе действия логируются в файл нашему системному администратору".format(message.from_user), reply_markup=markup)

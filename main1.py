@@ -88,7 +88,6 @@ def process_user_search(message):
         bot.send_message(message.chat.id, 'Не удалось подключиться к базе данных.')
 def get_users(): 
     '''Получает списко всех пользователей id и name и помещает в переменную user_list''' 
-    # Создание курсора с использованием контекстного менеджера для автоматического закрытия
     with connection.cursor(buffered=True) as cursor: 
         # Запрос на получение данных 
         query = "SELECT id, name FROM users" 
@@ -96,8 +95,6 @@ def get_users():
         # Получение всех результатов 
         user_list = cursor.fetchall()             
 
-    # В контекстном менеджере курсор закроется автоматически
-    # Соединение не закрываем, если оно будет использоваться в других местах
     return user_list
 def process_response(message):
     # Извлекаем сохраненный chat_id из chat_data
@@ -122,7 +119,6 @@ current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 infolog_filename = f"infolog_{current_time}.log" 
 infolog_path = f"{LOG_DIRECTORY}/{infolog_filename}"
 
-# Настраиваем базовую конфигурацию для логгера
 logging.basicConfig(
     level=logging.INFO,
     filename=infolog_path,  # Полный путь к файлу лога
@@ -167,7 +163,6 @@ def connect_to_database(host, user, password, database, max_retries=5):
 connection = connect_to_database(msql_HOST1, msql_USER1, msql_PWD1, msql_DATABASE)
 
 if connection is None:
-    # Handle connection failure
     pass
 
 create_database_query = "CREATE DATABASE stavki_ded"
@@ -288,7 +283,6 @@ def func(message):
 
             for msg in messages:
                 user_id, user_login, text = msg
-                # Каждой кнопке будет назначен уникальный callback_data, пример 'msg_1', 'msg_2' и так далее
                 button_text = f'Обращение от {user_login}' if user_login else 'Обращение от анонимного пользователя'
                 callback_data = f'msg_{user_id}'
                 button = types.InlineKeyboardButton(button_text, callback_data=callback_data)
@@ -427,8 +421,6 @@ def func(message):
     elif(message.text == '📸 Добавить/изменить изображение'):
         if check_admin_rights(message.chat.id, connection):
             bot.reply_to(message, "Пожалуйста, отправьте изображение.\n")
-                        # Переводим пользователя в режим "ожидает отправки изображения"
-                        # Здесь должна быть ваша логика изменения состояния пользователя
             @bot.message_handler(content_types=['photo'])
             def handle_photos(message):
                 if check_admin_rights(message.chat.id, connection):  # Проверяем права пользователя
@@ -554,7 +546,7 @@ def func(message):
             cursor.close()
 @bot.callback_query_handler(func=lambda call: call.data.startswith('msg_'))
 def handle_query(call):
-    message_id = int(call.data.split('_')[1])  # Извлеките ID сообщения из callback_data
+    message_id = int(call.data.split('_')[1])  
     cursor = connection.cursor()
     query = "SELECT text FROM message WHERE id = %s"
     cursor.execute(query, (message_id,))
@@ -581,13 +573,10 @@ def handle_reply(call):
     chat_id = cursor.fetchone()[0]
     cursor.close()
 
-    # Сохраняем информацию о сообщении, на которое админ должен ответить
     chat_data[call.message.chat.id] = {'chat_id': chat_id, 'message_id': message_id, 'user_login': user_login}
     
-    # Отправляем сообщение администратору чтобы он мог написать ответ
     bot.send_message(call.message.chat.id, text='Введите ваше сообщение для ответа пользователю:')
     
-    # Вешаем следующий шаг на функцию которая будет ловить ответное сообщение
     bot.register_next_step_handler(call.message, process_response)
 @bot.callback_query_handler(func=lambda call: not call.data.startswith('get_file'))
 def callback_query(call):
@@ -636,9 +625,6 @@ def handle_delete(call):
             cursor = connection.cursor()
             query = "DELETE FROM message WHERE id = %s"
             cursor.execute(query, (message_id,))
-            
-            # Потребуется вызвать connection.commit(), если используете базу данных,
-            # требующую подтверждения транзакции, например, PostgreSQL или MySQL
             connection.commit()
 
             cursor.close()
@@ -672,8 +658,6 @@ def handle_all_messages(message):
            #     bot.send_message(message.chat.id, text = 'Вы успешно выключили режим LIVE')
             #    live_message = True
 
-    # Дальше идет обработка обычных текстовых сообщений и сообщений с фотографиями
-    # Если live режим активирован и пользователь является админом, сообщения пересылаются всем пользователям.
     if check_admin_rights(user_id, connection):
         if live_message:
             cursor = connection.cursor()
@@ -698,13 +682,6 @@ def handle_all_messages(message):
             bot.send_message(message.chat.id, text=f'Ваш LIVE пост был отправлен пользователям бота.\nСтатистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно')
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил LIVE пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил LIVE пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
-
-    # Блок обработки обычных текстовых сообщений здесь
-    # Он выполнится как для админа, так и для обычных пользователей, и он не зависит от переменной live_message
-    #if message.content_type == 'text':
-        # Здесь ваш код обработки обычных текстовых сообщений
-     #   pass
-
 ###################################################
 
 bot.infinity_polling()

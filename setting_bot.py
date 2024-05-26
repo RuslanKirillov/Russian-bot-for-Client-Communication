@@ -1,6 +1,6 @@
-api_TOKEN1 = '6323201745:AAGF9xn__zNG71y3BSdqhOJCuHqeAfEcfAw'
-msql_HOST1 = 'localhost'
-msql_USER1="root"
-msql_PWD1="123456adS"
-msql_DATABASE="stavki_ded"
-LOG_DIRECTORY="/Users/ruslankirillov/Documents/GitHub/std/logi"
+api_TOKEN1 = '' #token
+msql_HOST1 = 'localhost' #host
+msql_USER1="root" #user
+msql_PWD1="" #password
+msql_DATABASE="" #name base
+LOG_DIRECTORY="/Users/ruslankirillov/Documents/GitHub/std/logi" #log libary

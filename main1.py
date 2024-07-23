@@ -11,8 +11,12 @@ from data1 import HELLO_TEXT, BOT_INFO_TEXT, DONATE_BOT_TEXT, SEND_BACKMESSAGE_T
 #####################################################################################
 import requests
 from requests.exceptions import ReadTimeout
+
+
 live_message = False
 chat_data = {}
+
+
 try:
     response = requests.get('https://api.telegram.org/', timeout=60)
     # Обработка успешного ответа
@@ -20,6 +24,7 @@ except ReadTimeout:
     # Код для обработки таймаута
     print("Запрос превысил время ожидания. Проблемы с TelegramAPI сервером")
 ####################################################################################
+
 def create_database(connection, query): #Создание базы данных
     cursor = connection.cursor()
     try:
@@ -27,6 +32,7 @@ def create_database(connection, query): #Создание базы данных
         print('База данных успешно создана')
     except Error as e:
         print(f"Error: '{e}'")
+        
 def execute_query(connection, query): #Выполнение запросов 
     cursor = connection.cursor()
     try:
@@ -35,6 +41,7 @@ def execute_query(connection, query): #Выполнение запросов
         print('Запрос успешно выполнен')
     except Error as e:
         print(f"Error: '{e}'")
+        
 def check_admin_rights(chat_id, connection):
     try:
         cursor = connection.cursor(buffered=True)
@@ -46,6 +53,7 @@ def check_admin_rights(chat_id, connection):
     except Exception as e:
         print(f"An error occurred: {e}")
         return False  # В случае возникновения исключения возвращает False
+        
 def check_admin_system(chat_id, connection):
     try:
         cursor = connection.cursor(buffered=True)
@@ -57,6 +65,7 @@ def check_admin_system(chat_id, connection):
     except Exception as e:
         print(f"An error occurred: {e}")
         return False  # В случае возникновения исключения возвращает False
+        
 def after_text_2(message):
     msg = message.text
     with open('msg_file.txt', 'w') as inf:
@@ -65,6 +74,7 @@ def after_text_2(message):
     print(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил текст в TePost Editor:\n{msg}')
     msg = None
     bot.send_message(message.chat.id, text='Текст успешно сохранён, используйте для настройки кнопки управления TePost Editor')
+    
 def find_user_in_db(connection, user_name):
     """Ищет информацию о пользователе в базе данных"""
     cursor = connection.cursor()
@@ -73,19 +83,25 @@ def find_user_in_db(connection, user_name):
     records = cursor.fetchall()
     cursor.close()
     return records
+    
 def process_user_search(message):
+    
     if connection is not None:
         user_name = message.text
         user_info = find_user_in_db(connection, user_name)
+        
         if user_info:
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] узнал информацию о пользователе: {user_name}, выведенная информация: {user_info}')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] узнал информацию о пользователе: {user_name}, выведенная информация: {user_info}')
             info_to_send = f"Информация о пользователе {user_name}: \nID:{user_info}"
             bot.send_message(message.chat.id, info_to_send)
+            
         else:
             bot.send_message(message.chat.id, 'Пользователь не найден.')
+            
     else:
         bot.send_message(message.chat.id, 'Не удалось подключиться к базе данных.')
+        
 def get_users(): 
     '''Получает списко всех пользователей id и name и помещает в переменную user_list''' 
     with connection.cursor(buffered=True) as cursor: 
@@ -96,6 +112,7 @@ def get_users():
         user_list = cursor.fetchall()             
 
     return user_list
+    
 def process_response(message):
     # Извлекаем сохраненный chat_id из chat_data
     user_login = chat_data[message.chat.id]['user_login']  # Теперь извлекаем user_login
@@ -111,6 +128,8 @@ def process_response(message):
     print(f'{message.from_user.first_name}[ID:{message.chat.id}] ответил пользователю {user_login} [ID:{chat_id}]:\nText: {message.text}')
     # Удаляем информацию о сообщении после ответа
     del chat_data[message.chat.id]
+
+
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
 adm_back_btm = types.KeyboardButton('🟥 Вернуться в админ-панель')
 ##################################SETTINGS##################################################
@@ -127,12 +146,9 @@ logging.basicConfig(
 )
 
 
-#logging.debug("A DEBUG Message")
-#logging.info("An INFO")
-#logging.warning("A WARNING")
-#logging.error("An ERROR")
-#ogging.critical("A message of CRITICAL severity")
+
 #####################################################################################
+
 def connect_to_database(host, user, password, database, max_retries=5):
     retries = 0
     while retries < max_retries:
@@ -192,11 +208,13 @@ execute_query(connection, create_users_table)
 
 bot = telebot.TeleBot(api_TOKEN1, parse_mode=None)
 @bot.message_handler(commands=['start', 'menu'])
+
 def send_welcome(message):
     chat_id = message.chat.id
     cursor = connection.cursor(buffered=True)
     cursor.execute("SELECT * FROM users WHERE chat_id = %s", (chat_id,))
     user = cursor.fetchone()
+    
     if not user:
         insert_query = "INSERT INTO users (chat_id, name, login) VALUES (%s, %s, %s)"
         cursor.execute(insert_query, (chat_id, message.from_user.first_name, message.from_user.username))
@@ -214,6 +232,7 @@ def send_welcome(message):
     markup.add(marafon_btml)
     markup.add(donate_btm)
     markup.add(info_btml)
+    
     if check_admin_rights(message.chat.id, connection):
         admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
         markup.add(admin_panelbtm)
@@ -221,12 +240,14 @@ def send_welcome(message):
 ############################################################################################################################
 @bot.message_handler(content_types=['text'])
 def func(message):
+    
     if(message.text == "🆘 Связь с администрацией бота"):
     #    markup = types.InlineKeyboardMarkup()
     #    id_send_help_btml = types.InlineKeyboardButton('Обратиться в поддержку', url='https://t.me/noUser125')
     #    markup.add(id_send_help_btml)
         bot.send_message(message.chat.id, text= SEND_BACKMESSAGE_TEXT)
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл меню обращения в поддержку')
+        
     elif(message.text == '🛠 Админ-панель' or message.text =='/settings' or message.text == '🟥 Вернуться в админ-панель'):
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] авторизовался в админ-панеле.')
@@ -240,6 +261,7 @@ def func(message):
             set_user = types.KeyboardButton('👨‍💻 Настройка пользователей')
             off_bot = types.KeyboardButton('❌ Оключить бота')
             message_userbtm = types.KeyboardButton('✉️ Обращения пользователей')
+            
             if check_admin_system(message.chat.id, connection):
                 markup.add(live_btml,te_post_editor)
                 markup.add(message_userbtm)
@@ -249,6 +271,7 @@ def func(message):
                 markup.add(set_user)
                 markup.add(menu_buttom)
                 markup.add(off_bot)
+                
             else:
                 markup.add(live_btml,te_post_editor)
                 #markup.add(te_post_editor)
@@ -263,6 +286,7 @@ def func(message):
     elif(message.text == '🛍 Изменить скидку на продукт'):
         bot.reply_to(message, text = 'В разработке...')
     elif(message.text == '📊 Статистика бота'):
+        
         if check_admin_rights(message.chat.id, connection):
             markup = types.InlineKeyboardMarkup(row_width=1)
             check_fullbtm = types.InlineKeyboardButton('📊 Полная статистика', callback_data='full_stats')
@@ -273,6 +297,7 @@ def func(message):
     elif(message.text == '💰 Марафон от 2500 до 14000'):
         bot.send_message(message.chat.id, text = 'Пока марафон не был объявлен. Следите за новостями')
     elif(message.text == '✉️ Обращения пользователей'):
+        
         if check_admin_rights(message.chat.id, connection):
             cursor = connection.cursor()
             query = "SELECT id, login, text FROM message"
@@ -298,10 +323,12 @@ def func(message):
         markup.add(donate_btm)
         bot.send_message(message.chat.id, text = DONATE_BOT_TEXT.format(message.from_user), reply_markup=markup)
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл донат проекту') 
+        
     elif(message.text == '👨‍🦳 О боте'):
         bot.send_message(message.chat.id, text = BOT_INFO_TEXT )
         logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл информацию о боте')
     elif(message.text == '💬 [NEW] Режим LIVE'):
+        
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в LIVE режим')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -310,14 +337,17 @@ def func(message):
             markup.add(adm_back_btm)
             bot.send_message(message.chat.id, text = '''Уважаемый администратор! Для активации режима LIVE воспользуйтесь соответствующими кнопками в вашем меню. 
 Помните, что все выполняемые действия регистрируются системным администратором.'''.format(message.from_user), reply_markup=markup)
+            
     elif(message.text == '🔛 Включить/Выключить LIVE'):
         global live_message
         if check_admin_rights(message.chat.id, connection):
+            
             if live_message:
                 logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] выключил Live режим ')
                 print((f'{message.from_user.first_name} [ID:{message.chat.id}] выключил Live режим '))
                 live_message = False
                 bot.send_message(message.chat.id, text = 'Вы успешно выключили режим LIVE')
+                
             else:
                 logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] включил Live режим ')
                 print((f'{message.from_user.first_name} [ID:{message.chat.id}] включил Live режим '))
@@ -328,6 +358,7 @@ def func(message):
 Пожалуйста, не забывайте выходить из этого режима после его использования.''')
 
     elif(message.text == '👨‍💻 Настройка пользователей' or message.text == '👨‍💻 Назад в UserEditor'):
+        
         if check_admin_rights(message.chat.id, connection):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] зашел в права пользователей. (Удачно)')
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -335,20 +366,24 @@ def func(message):
             user_listbtm = types.InlineKeyboardButton('🧾 Список пользователей')
             setadm_btm = types.InlineKeyboardButton('📝 Изменить права для пользователя')
             ban_btm = types.InlineKeyboardButton('⛔️ Заблокировать пользователя')
+            
             if check_admin_system(message.chat.id, connection):
                 markup.add(check_btm)
                 markup.add(user_listbtm)
                 markup.add(setadm_btm)
                 markup.add(ban_btm)
                 markup.add(adm_back_btm)
+                
             else:
                 markup.add(check_btm)
                 markup.add(user_listbtm)
                 markup.add(adm_back_btm)
             bot.send_message(message.chat.id, text='''Используйте кнопки управления в меню\nВсе действия логгируются системному администратору'''.format(message.from_user), reply_markup=markup)
+            
         else:
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался зайти в права пользователей. (Неудачно)')
+            
     elif(message.text == '🧾 Список пользователей'):
         if check_admin_rights(message.chat.id, connection):
             user_list = get_users()
@@ -356,6 +391,7 @@ def func(message):
             bot.send_message(message.chat.id, text=f"Список пользователей:\n{formatted_user_list}")
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл список пользователей')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл список пользователей')
+            
     elif(message.text == "🟥 Вернуться в меню"):
         chat_id = message.chat.id
         cursor = connection.cursor(buffered=True)
@@ -378,6 +414,7 @@ def func(message):
         markup.add(marafon_btml)
         markup.add(donate_btm)
         markup.add(info_btml)
+        
         if check_admin_rights(message.chat.id, connection):
             admin_panelbtm = types.KeyboardButton("🛠 Админ-панель")
             markup.add(admin_panelbtm)
@@ -397,10 +434,12 @@ def func(message):
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл TePost Editor')
             bot.send_message(message.chat.id, text = 'Используйте кнопки для редактирования поста\nTePost Editor - специальная разработка для данного бота\nВсе действия логгируются системному администратору'.format(message.from_user), reply_markup=markup)
+            
     elif(message.text == '💬 Изменить текст'):
         if check_admin_rights(message.chat.id, connection):
             msg = bot.send_message(message.chat.id, text='Введите текст который вы хотите опубликовать в посте\nВ посте запрещено:\n- Использовать мат, ругательство\n- Оскороблять кого-либо, выражать ненависть\nПосле того как вы отправите текст используйте кнопки TePost Editor')
             bot.register_next_step_handler(msg, after_text_2)
+
     elif(message.text == '🔍 Информация о пользователе'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -409,6 +448,7 @@ def func(message):
             markup.add(adm_back_btm)
             msg = bot.send_message(message.chat.id, 'Введите имя пользователя:')
             bot.register_next_step_handler(msg, process_user_search)
+    
     elif(message.text == '📷 Изменить изображение'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -418,6 +458,7 @@ def func(message):
             markup.add(addimg_btm, delimg_btm)
             markup.add(back_tepost_btm)
             bot.send_message(message.chat.id, text ='Используйте кнопки для управления'.format(message.from_user), reply_markup=markup)
+    
     elif(message.text == '📸 Добавить/изменить изображение'):
         if check_admin_rights(message.chat.id, connection):
             bot.reply_to(message, "Пожалуйста, отправьте изображение.\n")
@@ -432,6 +473,7 @@ def func(message):
                     bot.reply_to(message, "Ваше изображение сохранено.")
                     logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил фотографию для поста.')
                     print(f'{message.from_user.first_name} [ID:{message.chat.id}] изменил фотографию для поста.')
+    
     elif(message.text == '❌ Удалить изображение'):
         if check_admin_rights(message.chat.id, connection):
             if os.path.isfile("img_msg.jpg"):
@@ -439,9 +481,11 @@ def func(message):
                 bot.reply_to(message, 'Изображение успешно удаленно.')
                 logging.info(f' {message.from_user.first_name} [ID:{message.chat.id}] удалил фотографию в TePost Editor.')
                 print(f'{message.from_user.first_name} [ID:{message.chat.id}] удалил фотографию в TePost Editor.')
+    
             else:
                 bot.reply_to(message, 'Изображение не найденно. Вернитесь в TePost Editor')
-                print(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)')
+                print(f'{message.from_user.first_name} [ID:{message.chat.id}] попытался удалить фотографию в TePost Editor. (Фото уже удаленно)
+                ')
     elif(message.text == '🪧 Предосмотр поста'):
         if check_admin_rights(message.chat.id, connection):
             print_msg = ''
@@ -457,6 +501,7 @@ def func(message):
                 bot.send_message(message.chat.id, text = print_msg)
                 logging.info(f' {message.from_user.first_name} [ID:{message.chat.id}] открыл предпросмотр нового поста.')
                 print(f'{message.from_user.first_name} [ID:{message.chat.id}] открыл предпросмотр нового поста.')
+ 
     elif(message.text == '📩 Отправить пост'):
         if check_admin_rights(message.chat.id, connection):
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -466,6 +511,7 @@ def func(message):
             markup.add(sendfree_btm, sendsupport_btm)
             markup.add(back_tepost_btm)
             bot.send_message(message.chat.id, text='Перед отправкой воспользуйтесь предосмотром поста\nИспользуйте кнопки для отправки\nПост всем - отправить пост всем кто запустил бота\nПост платный - только оплаченные пользователи'.format(message.from_user), reply_markup=markup)
+  
     elif(message.text == '🆓 Отправить пост всем'):
         if check_admin_rights(message.chat.id, connection):
             cursor = connection.cursor()
@@ -509,6 +555,7 @@ def func(message):
             bot.send_message(message.chat.id, text=f'Ваш пост был отправлен пользователям бота.\nСтатистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно')
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
+   
     elif(message.text == '/bot_off_21'):
         if check_admin_system(message.chat.id, connection):
             bot.send_message(message.chat.id, text='Отключение бота')
@@ -643,22 +690,9 @@ def handle_delete(call):
 def handle_all_messages(message):
     global live_message
     user_id = message.from_user.id
-
-    # Обработка комманды активации / деактивации live режима
-    #if message.text == '🔛 Включить/Выключить режим':
-    #   if check_admin_rights(user_id, connection):
-    #        if live_message:
-    #            logging.info(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
-     #           print(f'{message.from_user.first_name} [ID:{user_id}] выключил Live режим ')
-      #          live_message = False
-       #         bot.send_message(message.chat.id, text = 'Вы успешно включили режим LIVE')
-        #    else:
-         #       logging.info(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
-          #      print(f'{message.from_user.first_name} [ID:{user_id}] включил Live режим ')
-           #     bot.send_message(message.chat.id, text = 'Вы успешно выключили режим LIVE')
-            #    live_message = True
-
+    
     if check_admin_rights(user_id, connection):
+        
         if live_message:
             cursor = connection.cursor()
             query = "SELECT chat_id FROM users"
@@ -667,13 +701,16 @@ def handle_all_messages(message):
             cursor.close()
             yes_msg = 0
             no_msg = 0
+            
             for chat_id in user_ids:
                 try:
                     if message.content_type == 'photo':
+                        
                         photo_id = message.photo[-1].file_id
                         bot.send_photo(chat_id, photo_id, message.caption)
                         yes_msg += 1
                     elif message.content_type == 'text':
+                        
                         bot.send_message(chat_id, message.text)
                         yes_msg += 1
                 except Exception as e:

@@ -1,5 +1,5 @@
 #
 # Author: Kirillov Ruslan
 # email: kirilooth@yandex.ru
-# telegram: @PUBLICINDEXUSERNOHAVE
+# telegram: https://t.me/PUBLICINDEXUSERNOHAVE
 # 

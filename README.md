@@ -17,7 +17,7 @@ Setup Instructions
 
 	1.	Clone the repository.
 	2.	Configure the bot_settings.py file with your settings.
-	3.	Install the necessary dependencies using pip install -r requirements.txt.
+ 	3. 	Edit bot message in data1.py file.
 	4.	Run the bot using python bot.py.
 
 Requirements

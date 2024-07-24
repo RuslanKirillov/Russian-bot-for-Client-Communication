@@ -48,11 +48,10 @@ def check_admin_rights(chat_id, connection):
         cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
         admin_level = cursor.fetchone()
         cursor.close()
-        # Возвращает True, если уровень админа 3 и выше, иначе False
         return admin_level and admin_level[0] >= 3
     except Exception as e:
         print(f"An error occurred: {e}")
-        return False  # В случае возникновения исключения возвращает False
+        return False  
         
 def check_admin_system(chat_id, connection):
     try:
@@ -60,11 +59,11 @@ def check_admin_system(chat_id, connection):
         cursor.execute("SELECT admin FROM users WHERE chat_id = %s", (chat_id,))
         admin_level = cursor.fetchone()
         cursor.close()
-        # Возвращает True, если уровень админа 6 и выше, иначе False
+        
         return admin_level and admin_level[0] >= 7
     except Exception as e:
         print(f"An error occurred: {e}")
-        return False  # В случае возникновения исключения возвращает False
+        return False  
         
 def after_text_2(message):
     msg = message.text
@@ -105,35 +104,35 @@ def process_user_search(message):
 def get_users(): 
     '''Получает списко всех пользователей id и name и помещает в переменную user_list''' 
     with connection.cursor(buffered=True) as cursor: 
-        # Запрос на получение данных 
+        
         query = "SELECT id, name FROM users" 
         cursor.execute(query) 
-        # Получение всех результатов 
+
         user_list = cursor.fetchall()             
 
     return user_list
     
 def process_response(message):
-    # Извлекаем сохраненный chat_id из chat_data
-    user_login = chat_data[message.chat.id]['user_login']  # Теперь извлекаем user_login
+
+    user_login = chat_data[message.chat.id]['user_login']  
     chat_id = chat_data[message.chat.id]['chat_id']
 
-    # Получаем текст сообщения от администратора
+
     response_text = message.text
 
-    # Отправляем ответное сообщение пользователю
+
     bot.send_message(chat_id, text=response_text)
 
     logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] ответил пользователю {user_login} [ID:{chat_id}]:\nText: {message.text}')
     print(f'{message.from_user.first_name}[ID:{message.chat.id}] ответил пользователю {user_login} [ID:{chat_id}]:\nText: {message.text}')
-    # Удаляем информацию о сообщении после ответа
+
     del chat_data[message.chat.id]
 
 
 menu_buttom = types.KeyboardButton('🟥 Вернуться в меню')
 adm_back_btm = types.KeyboardButton('🟥 Вернуться в админ-панель')
 ##################################SETTINGS##################################################
-# Генерируем имя файла лога с текущим временем
+
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 infolog_filename = f"infolog_{current_time}.log" 
 infolog_path = f"{LOG_DIRECTORY}/{infolog_filename}"
@@ -493,7 +492,7 @@ def func(message):
                 print_msg = inf.read()
             try:
                 with open('img_msg.jpg', 'rb') as imginf:
-                    print_img = imginf.read()  # Считываем содержимое изображения
+                    print_img = imginf.read()  
                 bot.send_message(message.chat.id, text='Вот пример как будет выглядеть пост:')
                 bot.send_photo(message.chat.id, photo=print_img, caption=print_msg)
             except:
@@ -527,31 +526,31 @@ def func(message):
             with open('msg_file.txt', 'r') as inf:
                 print_msg = inf.read()
 
-            # Переменная для содержимого фото. Если фото нет, переменная останется None.
+
             print_img = None
             try:
                 with open('img_msg.jpg', 'rb') as imginf:
                     print_img = imginf.read()
             except Exception as e:
-                # Если фото не смогло быть загружено, печатаем ошибку и продолжаем.
+
                 print(f"Не удалось загрузить файл изображения: {e}")
 
-            # Перебираем всех пользователей и отправляем им сообщение или фото.
+
             for user_id in user_ids:
                 try:
-                    # Пытаемся отправить фото если оно доступно.
+
                     if print_img:
                         bot.send_photo(user_id, photo=print_img, caption=print_msg)
                     else:
-                        # Если фото нет, отправляем только текстовое сообщение.
+
                         bot.send_message(user_id, text=print_msg)
-                    yes_msg += 1  # Успех, сообщение отправлено.
+                    yes_msg += 1  
                 except Exception as e:
-                    # Если возникла ошибка при отправке, печатаем её и инкрементируем счётчик ошибок.
+
                     print(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
                     no_msg += 1
 
-            # В конце отправляем статистику об отправке сообщений.
+
             bot.send_message(message.chat.id, text=f'Ваш пост был отправлен пользователям бота.\nСтатистика сообщений:\n{yes_msg} - ✔️ Удачно\n{no_msg} - ✖️ Неудачно')
             logging.info(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
             print(f'{message.from_user.first_name} [ID:{message.chat.id}] отправил пост всем пользователям. {yes_msg} - Успешно, {no_msg} - Неуспешно.')
@@ -568,16 +567,16 @@ def func(message):
         user_login = message.chat.username if message.chat.username else 'Anonymous'
         chat_id = message.chat.id
 
-        # Формируем параметризованный SQL-запрос
+
         query = "INSERT INTO message (login, chat_id, text) VALUES (%s, %s, %s)"
 
         try:
-            # Выполняем параметризованный запрос
+
             cursor.execute(query, (user_login, chat_id, user_text))
-            connection.commit()  # Фиксируем изменения в базе данных
+            connection.commit()  
             logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] отправил сообщение в поддержку\nText: {user_text}')
             print(f'{message.from_user.first_name}[ID:{message.chat.id}] отправил сообщение в поддержку\nText: {user_text}')
-            # Поиск админов с уровнем доступа 3 и выше 
+
             admin_query = "SELECT chat_id FROM users WHERE admin >= 3"
             cursor.execute(admin_query)
             admins = cursor.fetchall()
@@ -589,7 +588,7 @@ def func(message):
             logging.info(f'{message.from_user.first_name}[ID:{message.chat.id}] ошибка отправки сообщения{err}.\nText: {user_text}')
             print('Ошибка отправки сообщения:', err)
         finally:
-            # Закрываем соединение
+
             cursor.close()
 @bot.callback_query_handler(func=lambda call: call.data.startswith('msg_'))
 def handle_query(call):
@@ -599,7 +598,7 @@ def handle_query(call):
     cursor.execute(query, (message_id,))
     message = cursor.fetchone()[0]
 
-    # Подготовка кнопок для ответа пользователю
+
     reply_markup = types.InlineKeyboardMarkup()
     reply_button = types.InlineKeyboardButton('Ответить', callback_data=f'reply_{message_id}')
     delete_button = types.InlineKeyboardButton('Удалить', callback_data=f'delmsg_{message_id}')
@@ -609,11 +608,11 @@ def handle_query(call):
     cursor.close()
 @bot.callback_query_handler(func=lambda call: call.data.startswith('reply_'))
 def handle_reply(call):
-    message_id = int(call.data.split('_')[1])  # Извлеките ID сообщения из callback_data
+    message_id = int(call.data.split('_')[1])  
     user_login = call.message.chat.username if call.message.chat.username else 'Anonymous'
 
     
-    # Получаем chat_id пользователя для ответа
+
     cursor = connection.cursor()
     query = "SELECT chat_id FROM message WHERE id = %s"
     cursor.execute(query, (message_id,))
@@ -645,7 +644,7 @@ def callback_query(call):
                 bot.send_message(call.message.chat.id, "Ошибка при получении списка файлов log\nСвяжитесь с системным администратором")
                 logging.info(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] неудачно загрузил список лог-файлов')
 
-# Это должно быть зарегистрировано как callback_query_handler
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('get_file')) 
 def send_log_file(call):
     if check_admin_rights(call.message.chat.id, connection):
@@ -666,9 +665,9 @@ def handle_delete(call):
     if check_admin_system(call.message.chat.id, connection):
         try:
 
-            # Извлеките ID сообщения из callback_data
+
             message_id = int(call.data.split('_')[1])
-            # Удаление сообщения из базы данных
+
             cursor = connection.cursor()
             query = "DELETE FROM message WHERE id = %s"
             cursor.execute(query, (message_id,))
@@ -676,12 +675,12 @@ def handle_delete(call):
 
             cursor.close()
         
-            # Отправляем подтверждение об удалении пользователю, который нажал кнопку
+
             bot.send_message(call.message.chat.id, text='Сообщение успешно удалено.')
             logging.info(f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] удалил сообщение пользователя')
             print((f'{call.message.from_user.first_name}[ID:{call.message.chat.id}] удалил сообщение пользователя'))
         except Exception as e:
-            # Перехватываем любое исключение и сообщаем об ошибке
+
             bot.send_message(call.message.chat.id, text=f'Произошла ошибка при удалении сообщения: {e}.')
     else:
         bot.send_message(call.message.chat.id, text='Вам запрещено удалять сообщения, обратитесь к системному администратору')
